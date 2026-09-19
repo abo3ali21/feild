@@ -1,0 +1,10 @@
+{
+  "poaceae":{"family_name":"Grass family","minimum_break_years":1,"common_pathogens":["stalk rots","cereal rusts"]},
+  "fabaceae":{"family_name":"Legume family","minimum_break_years":1,"common_pathogens":["root rots","legume wilts"]},
+  "solanaceae":{"family_name":"Nightshade family","minimum_break_years":2,"common_pathogens":["late blight","bacterial wilt"]},
+  "brassicaceae":{"family_name":"Brassica family","minimum_break_years":2,"common_pathogens":["clubroot","blackleg"]},
+  "asteraceae":{"family_name":"Sunflower family","minimum_break_years":1,"common_pathogens":["sclerotinia"]},
+  "euphorbiaceae":{"family_name":"Spurge family","minimum_break_years":1,"common_pathogens":["mosaic diseases"]},
+  "malvaceae":{"family_name":"Mallow family","minimum_break_years":1,"common_pathogens":["verticillium wilt"]},
+  "convolvulaceae":{"family_name":"Morning-glory family","minimum_break_years":1,"common_pathogens":["soil rots"]}
+}

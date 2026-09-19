@@ -1,0 +1,1 @@
+"""External environmental data adapters."""
