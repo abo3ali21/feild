@@ -2,16 +2,21 @@ from __future__ import annotations
 
 import logging
 import os
+import time
+from collections import deque
 from copy import deepcopy
+from datetime import timedelta
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.calculations import precipitation_anomaly, rainfall_status
 from app.core.engine import load_crops, rank_rotations
-from app.models.schemas import EvaluationResponse, FarmRequest, SimulationRequest
+from app.models.schemas import EvaluationResponse, FarmRequest, SensorReadingIn, SimulationRequest
+from app.services import sensor_store
 from app.services.environment import build_context, demo_profiles
+from app.services.sensor_context import apply_sensor_context
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("field_shift")
@@ -42,9 +47,90 @@ def profiles():
     return {"profiles": [{key: value for key, value in profile.items() if key != "context"} for profile in demo_profiles()]}
 
 
+INGEST_WINDOW: dict[str, deque[float]] = {}
+
+
+def _rate_limited(device_id: str) -> bool:
+    try:
+        limit = max(1, int(os.getenv("SENSOR_RATE_LIMIT_PER_MINUTE", "10")))
+    except ValueError:
+        limit = 10
+    events = INGEST_WINDOW.setdefault(device_id, deque())
+    while events and events[0] < time.monotonic() - 60:
+        events.popleft()
+    if len(events) >= limit:
+        return True
+    events.append(time.monotonic())
+    return False
+
+
+def _require_internal_token(token: str | None) -> None:
+    expected = os.getenv("SENSOR_INTERNAL_TOKEN")
+    if not expected or token != expected:
+        raise HTTPException(status_code=403, detail="Valid X-Internal-Token required for sensor query endpoints")
+
+
+@app.post("/api/v1/sensors/readings")
+async def ingest_sensor_reading(
+    reading: SensorReadingIn,
+    x_device_id: str | None = Header(default=None),
+    x_device_key: str | None = Header(default=None),
+):
+    if not x_device_id or not x_device_key:
+        raise HTTPException(status_code=401, detail="X-Device-Id and X-Device-Key headers are required")
+    if reading.device_id != x_device_id:
+        raise HTTPException(status_code=403, detail="Payload device_id does not match authenticated device")
+    if _rate_limited(x_device_id):
+        raise HTTPException(status_code=429, detail="Device submission rate limit exceeded")
+    status, device = sensor_store.check_credentials(x_device_id, x_device_key)
+    if status == "unknown_device":
+        logger.warning("sensor_ingest_rejected reason=unknown_device device=%s", x_device_id)
+        raise HTTPException(status_code=401, detail="Unknown device")
+    if status != "ok":
+        logger.warning("sensor_ingest_reason=unauthorized device=%s", x_device_id)
+        raise HTTPException(status_code=401, detail="Device authentication failed")
+    moment = sensor_store.parse_timestamp(reading.device_timestamp.isoformat())
+    now = sensor_store.now_utc()
+    if moment > now + timedelta(minutes=15):
+        raise HTTPException(status_code=422, detail="device_timestamp is implausibly far in the future")
+    if moment < now - timedelta(days=400):
+        raise HTTPException(status_code=422, detail="device_timestamp is older than the accepted backfill window")
+    outcome = sensor_store.insert_reading(device, reading.model_dump(exclude={"device_id", "device_timestamp"}), reading.device_timestamp.isoformat())
+    logger.info("sensor_ingest device=%s farm=%s outcome=%s", device["device_id"], device["farm_id"], outcome)
+    return {"status": outcome, "farm_id": device["farm_id"], "duplicate": outcome == "duplicate"}
+
+
+@app.get("/api/v1/sensors/{farm_id}/latest")
+def sensor_latest(farm_id: str, x_internal_token: str | None = Header(default=None)):
+    _require_internal_token(x_internal_token)
+    readings = sensor_store.latest_readings(farm_id)
+    if readings is None:
+        raise HTTPException(status_code=404, detail="Farm not registered")
+    return {"farm_id": farm_id, "fresh_window_hours": sensor_store.max_age_hours(), "readings": readings}
+
+
+@app.get("/api/v1/sensors/{farm_id}/history")
+def sensor_history(farm_id: str, hours: float = Query(default=168, gt=0, le=8760), limit: int = Query(default=1000, ge=1, le=1000), x_internal_token: str | None = Header(default=None)):
+    _require_internal_token(x_internal_token)
+    readings = sensor_store.reading_history(farm_id, hours=hours, limit=limit)
+    if readings is None:
+        raise HTTPException(status_code=404, detail="Farm not registered")
+    return {"farm_id": farm_id, "hours": hours, "readings": readings}
+
+
+@app.get("/api/v1/sensors/{farm_id}/status")
+def sensor_status(farm_id: str, x_internal_token: str | None = Header(default=None)):
+    _require_internal_token(x_internal_token)
+    status = sensor_store.farm_status(farm_id)
+    if status is None:
+        raise HTTPException(status_code=404, detail="Farm not registered")
+    return status
+
+
 async def evaluate_request(request: FarmRequest, evaluation_id: str | None = None) -> EvaluationResponse:
     try:
         context, provenance = await build_context(request)
+        apply_sensor_context(context, provenance, request)
         rotations, rejected = rank_rotations(context, request.current_crop_id, request.is_irrigated, request.farmer_priority)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -1,0 +1,21 @@
+{
+  "_comment": "Backend-managed device registry and farm associations. Replace api_key values with real secrets via a git-ignored copy pointed at by SENSOR_SETUP_PATH; never commit real credentials. Re-run edits here to reassign a device to another farm.",
+  "farms": [
+    {
+      "farm_id": "farm-demo-sahel",
+      "latitude": 14.120,
+      "longitude": -16.035
+    }
+  ],
+  "devices": [
+    {
+      "device_id": "esp32-device-001",
+      "farm_id": "farm-demo-sahel",
+      "api_key": "replace-with-device-secret",
+      "soil_wet_adc": 1500,
+      "soil_dry_adc": 2500,
+      "planted_depth_cm": 10,
+      "calibration_source": "sketch_oct29d WET_THRESHOLD/DRY_THRESHOLD two-point relative index"
+    }
+  ]
+}

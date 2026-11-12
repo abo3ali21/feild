@@ -91,6 +91,12 @@ def score_rotation(sequence: tuple[Crop, ...], context: EnvironmentalContext, ir
         irrigation_bonus = .16 if irrigated and supply_ratio < 1 else 0
         water_parts.append(clamp(.48 * supply_ratio + .30 * crop.drought_tolerance + .12 * texture_factor + .10 * anomaly_factor + irrigation_bonus))
     water = sum(water_parts) / 3
+    if context.soil_moisture_index is not None:
+        # Fresh, calibrated on-farm moisture nudges the water dimension within
+        # a documented bound; the weighted MCDA structure is unchanged and
+        # without sensor data this block never executes.
+        from app.services.sensor_context import water_influence
+        water = clamp(water * (1 + water_influence() * (context.soil_moisture_index - .5) * 2))
 
     legume_credit = min(sum(c.nitrogen_credit_kg_ha for c in sequence) / 70, 1)
     removal = sum(c.nitrogen_removal_index for c in sequence) / 3

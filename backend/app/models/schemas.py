@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Priority(str, Enum):
@@ -19,6 +20,7 @@ class DataStatus(str, Enum):
     ESTIMATED = "ESTIMATED"
     FALLBACK = "FALLBACK"
     UNAVAILABLE = "UNAVAILABLE"
+    SENSOR = "SENSOR"
 
 
 class FarmRequest(BaseModel):
@@ -67,6 +69,7 @@ class EnvironmentalContext(BaseModel):
     rainfall_status: str
     heat_stress_days: int
     soil_moisture_state: str
+    soil_moisture_index: float | None = Field(default=None, ge=0, le=1)
     soil_texture: str
     soil_ph: float
     soil_organic_matter_pct: float
@@ -130,3 +133,26 @@ class WeightSet(BaseModel):
         if values and abs(sum(values.values()) + value - 1.0) > 1e-6:
             raise ValueError("MCDA weights must sum to 1.0")
         return value
+
+
+class SensorReadingIn(BaseModel):
+    """Payload from an authenticated ESP32 device.
+
+    Ranges are physical plausibility bounds for the BME680 and the ESP32 12-bit
+    ADC, not agronomic thresholds. A channel may be absent when that sensor is
+    disconnected; at least one channel must be present.
+    """
+    device_id: str = Field(min_length=1, max_length=128)
+    temperature_c: float | None = Field(default=None, ge=-40, le=85)
+    humidity_percent: float | None = Field(default=None, ge=0, le=100)
+    pressure_hpa: float | None = Field(default=None, ge=300, le=1100)
+    gas_resistance_ohms: float | None = Field(default=None, gt=0, le=10_000_000)
+    soil_moisture_raw: int | None = Field(default=None, ge=0, le=4095)
+    device_timestamp: datetime
+
+    @model_validator(mode="after")
+    def at_least_one_measurement(self):
+        channels = (self.temperature_c, self.humidity_percent, self.pressure_hpa, self.gas_resistance_ohms, self.soil_moisture_raw)
+        if all(value is None for value in channels):
+            raise ValueError("Reading must contain at least one sensor measurement")
+        return self

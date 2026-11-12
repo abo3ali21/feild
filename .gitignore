@@ -8,3 +8,6 @@ frontend/node_modules/
 frontend/.next/
 frontend/dist/
 frontend/.sites-runtime/
+
+firmware/**/Secrets.h
+backend/sensor_readings.db
