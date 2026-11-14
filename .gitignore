@@ -1,3 +1,4 @@
+
 .env
 .env.*
 !.env.example
@@ -16,4 +17,4 @@ backend/sensor_readings.db
 sensor_readings.db
 *.db
 backups/
-
+backend/sensor_setup.local.json
