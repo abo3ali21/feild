@@ -1,4 +1,4 @@
-# 🌱 Agri Rotation (أجري روتيشن)
+# 🌱 AgriRotation
 
 [![CI Pipeline](https://img.shields.io/badge/CI-GitHub%20Actions-22c55e.svg)](ci/github-actions-ci.yml)
 [![Tests](https://img.shields.io/badge/pytest-61%2F61%20passing-143626.svg)](backend/tests/)
@@ -15,7 +15,7 @@
 
 ## 📖 Executive Summary
 
-**Agri Rotation (أجري روتيشن)** is an enterprise-grade agronomic decision-support platform engineered to help farmers, agricultural extension officers, and agronomists design resilient, profitable, and ecologically balanced **3-year crop rotation sequences**. 
+**AgriRotation** is an enterprise-grade agronomic decision-support platform engineered to help farmers, agricultural extension officers, and agronomists design resilient, profitable, and ecologically balanced **3-year crop rotation sequences**. 
 
 Traditional crop management often overlooks compound climate stress (extreme heat days, unseasonal drought, shifting rainfall) and soil depletion (loss of soil organic matter, pest host carry-over). **Agri Rotation** resolves this challenge by cross-referencing **real-time satellite climatology**, **global soil databases**, and **physical on-field microclimate sensors** against deterministic agronomic rules and machine learning likelihood scoring.
 
@@ -315,12 +315,12 @@ npm run build   # Production Turbopack build & static prerendering
 
 ## 🛡️ Responsible Agricultural Use
 
-> **Disclaimer:** Agri Rotation provides **comparative agronomic decision support**, not absolute yield predictions or guaranteed financial returns. Soil micro-variability, subterranean drainage, unpredicted extreme weather events, local pest outbreaks, and cultivar choices can alter field outcomes. Always verify recommendations with certified local agricultural extension advisors, on-site soil laboratory tests, and seed availability before planting.
+> **Disclaimer:** AgriRotation provides **comparative agronomic decision support**, not absolute yield predictions or guaranteed financial returns. Soil micro-variability, subterranean drainage, unpredicted extreme weather events, local pest outbreaks, and cultivar choices can alter field outcomes. Always verify recommendations with certified local agricultural extension advisors, on-site soil laboratory tests, and seed availability before planting.
 
 ---
 
 ## 📄 License & Credits
 
 * **License:** Licensed under the [MIT License](LICENSE).
-* **Core Contributors:** Antigravity / Google DeepMind Team & [MO22BARY](https://github.com/abo3ali21).
+* **Core Contributors:** Antigravity / Google DeepMind Team & [MO22BARY](https://github.com/MO22BARY).
 * **Data Providers:** [NASA POWER Project](https://power.larc.nasa.gov/), [ISRIC World Soil Information](https://www.isric.org/).
