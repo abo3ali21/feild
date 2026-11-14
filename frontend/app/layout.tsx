@@ -1,10 +1,31 @@
 import type { Metadata } from "next";
-import { Noto_Sans_Arabic } from "next/font/google";
+import localFont from "next/font/local";
 import { LangProvider } from "./lang";
 import "./globals.css";
 
-const arabic = Noto_Sans_Arabic({
-  subsets: ["arabic", "latin"],
+const firjarArabic = localFont({
+  src: [
+    {
+      path: "../public/fonts/Firjar-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Firjar-Medium.ttf",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Firjar-SemiBold.ttf",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Firjar-Bold.ttf",
+      weight: "700",
+      style: "normal",
+    },
+  ],
   variable: "--font-arabic",
   display: "swap",
 });
@@ -28,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" dir="ltr" suppressHydrationWarning className={arabic.variable}>
+    <html lang="en" dir="ltr" suppressHydrationWarning className={firjarArabic.variable}>
       <body className="antialiased">
         <script dangerouslySetInnerHTML={{ __html: restoreDirection }} />
         <LangProvider>{children}</LangProvider>

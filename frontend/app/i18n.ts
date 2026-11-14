@@ -66,6 +66,39 @@ export const WARNING_LABELS: Record<string, { en: string; ar: string }> = {
   },
 };
 
+export function translateExplanation(text: string, lang: Lang): string {
+  if (lang !== "ar") return text;
+  if (text.includes("fixes nitrogen")) {
+    return "تثبيت النيتروجين الحيوي وتحسين خصوبة التربة للأطوار الزراعية اللاحقة.";
+  }
+  if (text.includes("demand substantial nitrogen") || text.includes("offset fertiliser needs")) {
+    return "محاصيل شَرِهة للنيتروجين؛ تعاقبها بعد محصول بقولي يقلل تكلفة الأسمدة المعدنية بنسبة كبيرة.";
+  }
+  if (text.includes("root profiles supports soil structure") || text.includes("subsoil compaction")) {
+    return "تناوب أعماق الجذور السطحية والعميقة يحافظ على بناء التربة ويمنع انضغاطها.";
+  }
+  if (text.includes("distinct botanical families break pest")) {
+    return "تنويع العائلات النباتية يكسر دورة حياة الآفات الحشرية والأمراض الفطرية بين المواسم.";
+  }
+  if (text.includes("Adaptive Rotation")) {
+    return "دورة تكيفية متوازنة: استخدام أصناف متحملة للإجهاد الحراري والجفاف مع الري التكميلي والتغطية العضوية.";
+  }
+  return text;
+}
+
+export function translateFactor(text: string, lang: Lang): string {
+  if (lang !== "ar") return text;
+  return text
+    .replace("seasonal GDD", "حرارة تراكمية موسميًا")
+    .replace("heat-stress days", "أيام إجهاد حراري")
+    .replace("seasonal rainfall", "أمطار موسمية")
+    .replace("rainfall anomaly", "شذوذ الأمطار عن المعدل")
+    .replace("estimated pH", "درجة حموضة التربة التقريبية")
+    .replace("Legume contribution included", "تم احتساب تثبيت النيتروجين البقولي")
+    .replace("3 crop families", "3 فصائل نباتية مختلفة")
+    .replace("Alternating root profiles", "تناوب أعماق الجذور");
+}
+
 export const DEMO_LABELS: Record<string, { name: string; country: string; system: string }> = {
   luxor: { name: "وادي النيل / الأقصر", country: "مصر", system: "مروي" },
   sahel: { name: "الساحل شبه القاحل", country: "السنغال", system: "بعل" },

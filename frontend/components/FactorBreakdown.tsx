@@ -73,11 +73,28 @@ export function FactorBreakdown({
               : "The following crops failed hard environmental thresholds (e.g. soil pH alkalinity, heat ceiling, or water deficit) to prevent crop failure risk:"}
           </p>
           <ul style={{ margin: 0, paddingInlineStart: "1.2rem", fontSize: "0.85rem", color: "#7f1d1d" }}>
-            {rejectedExamples.map((item, idx) => (
-              <li key={idx} style={{ marginBottom: "4px" }}>
-                <strong>[{item.rule}]:</strong> {item.reason}
-              </li>
-            ))}
+            {rejectedExamples.map((item, idx) => {
+              const ruleNameAr =
+                item.rule === "SOIL_PH"
+                  ? "حموضة وقلوية التربة"
+                  : item.rule === "EXTREME_HEAT"
+                  ? "الإجهاد الحراري الشديد"
+                  : item.rule === "CRITICAL_WATER"
+                  ? "العجز المائي الحرج"
+                  : item.rule === "MINIMUM_GDD"
+                  ? "الحرارة التراكمية"
+                  : item.rule === "FAMILY_BREAK"
+                  ? "فصل العائلات النباتية"
+                  : item.rule === "IRRIGATION_REQUIRED"
+                  ? "احتياج ري إجباري"
+                  : item.rule;
+
+              return (
+                <li key={idx} style={{ marginBottom: "4px" }}>
+                  <strong>[{lang === "ar" ? ruleNameAr : item.rule}]:</strong> {item.reason}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

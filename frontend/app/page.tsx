@@ -13,6 +13,7 @@ import {
   FlaskConical,
   Globe,
   Info,
+  Leaf,
   Orbit,
   Radio,
   RefreshCw,
@@ -40,6 +41,7 @@ import {
   DICTS,
   Lang,
   SOIL_TEXTURES,
+  translateExplanation,
 } from "./i18n";
 import { Ltr, useLang } from "./lang";
 
@@ -566,6 +568,10 @@ export default function Home() {
           setIrrigated={setIrrigated}
           priority={priority}
           simulate={simulate}
+          onBackToSetup={() => {
+            setView("setup");
+            setStep(3);
+          }}
         />
       )}
       <MethodDialog open={methodOpen} onOpenChange={setMethodOpen} />
@@ -1247,6 +1253,7 @@ function Results({
   setIrrigated,
   priority,
   simulate,
+  onBackToSetup,
 }: {
   data: Evaluation;
   demo: Demo;
@@ -1258,6 +1265,7 @@ function Results({
   setIrrigated: (b: boolean) => void;
   priority: string;
   simulate: () => void;
+  onBackToSetup: () => void;
 }) {
   const { lang, t } = useLang();
   const d = demoDisplay(demo, lang, t);
@@ -1265,6 +1273,18 @@ function Results({
 
   return (
     <div className="results-shell">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+        <button
+          type="button"
+          onClick={onBackToSetup}
+          className="secondary-action"
+          style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+        >
+          <BackIcon size={16} />
+          <span>{lang === "ar" ? "العودة لتعديل المزرعة والمحاصيل" : "Edit Farm & Crop Parameters"}</span>
+        </button>
+      </div>
+
       <section className="result-title">
         <div>
           <span className="eyebrow">
@@ -1308,7 +1328,48 @@ function Results({
           {bestRotation && <CropCalendar rotation={bestRotation} />}
         </Tabs.Content>
         <Tabs.Content value="compare">
-          <RotationCards rotations={data.recommended_rotations} />
+          <div className="compare-grid">
+            {data.recommended_rotations.map((rotation) => (
+              <article key={rotation.rank}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span className="step-label">
+                    {t.results.rank} 0{rotation.rank}
+                  </span>
+                  {rotation.rank === 1 && (
+                    <span className="best-fit">
+                      <Leaf size={14} /> {t.results.strongestFit}
+                    </span>
+                  )}
+                </div>
+                <div className="compare-score">
+                  {rotation.scores.overall}
+                  <small> / 100</small>
+                </div>
+                <h3>
+                  {rotation.sequence
+                    .map((crop) => CROPS[crop.crop_id]?.[lang] ?? crop.name)
+                    .join(lang === "ar" ? " ← " : " → ")}
+                </h3>
+                <div className="score-bars">
+                  {(["climate", "water", "soil", "diversity"] as const).map((key) => (
+                    <div key={key}>
+                      <span>
+                        {t.results.dimensions[key]} <b>{rotation.scores[key]}</b>
+                      </span>
+                      <i>
+                        <em style={{ width: rotation.scores[key] + "%" }} />
+                      </i>
+                    </div>
+                  ))}
+                </div>
+                <ul>
+                  {rotation.explanations.map((item) => (
+                    <li key={item}>{translateExplanation(item, lang)}</li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
         </Tabs.Content>
       </Tabs.Root>
 

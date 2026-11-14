@@ -4,7 +4,7 @@ import React from "react";
 import { ChevronLeft, ChevronRight, Leaf, Sparkles, TriangleAlert } from "lucide-react";
 import { useLang } from "@/app/lang";
 import { Rotation } from "@/lib/types";
-import { CROPS, WARNING_LABELS } from "@/app/i18n";
+import { CROPS, WARNING_LABELS, translateExplanation, translateFactor } from "@/app/i18n";
 
 type RotationCardsProps = {
   rotations: Rotation[];
@@ -83,7 +83,7 @@ export function RotationCards({ rotations }: RotationCardsProps) {
               </strong>
               <ul>
                 {rotation.explanations.map((item) => (
-                  <li key={item}>{item}</li>
+                  <li key={item}>{translateExplanation(item, lang)}</li>
                 ))}
               </ul>
             </div>
@@ -103,19 +103,22 @@ export function RotationCards({ rotations }: RotationCardsProps) {
                         border: "1px solid var(--border-subtle, #e2e8f0)",
                       }}
                     >
-                      <strong>{t.results.dimensions[dimension as keyof typeof t.results.dimensions] ?? dimension}:</strong> {factorText}
+                      <strong>{t.results.dimensions[dimension as keyof typeof t.results.dimensions] ?? dimension}:</strong>{" "}
+                      {translateFactor(factorText, lang)}
                     </span>
                   ))
                 )}
               </div>
             )}
 
-            <div className="warning">
-              <TriangleAlert size={16} />
-              <span>
-                {WARNING_LABELS[rotation.warnings[0]]?.[lang] ?? rotation.warnings[0]}
-              </span>
-            </div>
+            {rotation.warnings && rotation.warnings.length > 0 && (
+              <div className="warning">
+                <TriangleAlert size={16} />
+                <span>
+                  {WARNING_LABELS[rotation.warnings[0]]?.[lang] ?? rotation.warnings[0]}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="score-bars">
