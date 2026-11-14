@@ -73,7 +73,7 @@ def suitability(crop: Crop, context: EnvironmentalContext, irrigated: bool, irri
     # 5. Crop-specific heat stress threshold exceedance
     crop_heat_days = context.crop_heat_stress_days.get(crop.crop_id, context.heat_stress_days)
     if irrigated:
-        extreme_heat_limit = 120 if crop.drought_tolerance > 0.7 else 60
+        extreme_heat_limit = 180 if crop.drought_tolerance >= 0.55 else 75
     else:
         extreme_heat_limit = 48 if crop.drought_tolerance > 0.7 else 30
     heat_ok = crop_heat_days <= extreme_heat_limit
