@@ -101,51 +101,57 @@ export default function HardwareStationPage() {
     } else if (type === "heatwave") {
       override = {
         temperature_c: 41.5,
-        humidity_pct: 18.0,
+        humidity_pct: 19.0,
         soil_moisture_pct: 21.0,
         soil_raw_adc: 2880,
       };
     }
 
-    setTelemetry((prev) => ({ ...prev, ...override, timestamp: Date.now() / 1000, active: true }));
+    const updated = {
+      ...telemetry,
+      ...override,
+      timestamp: Math.floor(Date.now() / 1000),
+      is_synthetic: true,
+    };
+    setTelemetry(updated);
 
     try {
       const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-      await fetch(`${base}/api/sensors/override`, {
+      await fetch(`${base}/api/sensors/ingest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(override),
+        body: JSON.stringify(updated),
       });
     } catch {
-      // Offline fallback
-    } finally {
-      setLoading(false);
+      // Local fallback
     }
+    setLoading(false);
   };
 
   const applyToPlanner = () => {
-    const overridePayload = {
-      active: true,
-      temperature_c: telemetry.temperature_c,
-      humidity_pct: telemetry.humidity_pct,
-      soil_moisture_pct: telemetry.soil_moisture_pct,
-      gas_resistance_kohm: telemetry.gas_resistance_kohm,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem("field_shift_hardware_override", JSON.stringify(overridePayload));
-    setApplied(true);
-    setTimeout(() => {
-      router.push("/");
-    }, 800);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "field_shift_hardware_override",
+        JSON.stringify({
+          active: true,
+          temperature_c: telemetry.temperature_c,
+          humidity_pct: telemetry.humidity_pct,
+          soil_moisture_pct: telemetry.soil_moisture_pct,
+          soil_raw_adc: telemetry.soil_raw_adc,
+          timestamp: telemetry.timestamp,
+        })
+      );
+      setApplied(true);
+      setTimeout(() => {
+        router.push("/");
+      }, 700);
+    }
   };
 
   const isRtl = lang === "ar";
-
-  // NASA baseline estimates for Delta comparison
   const nasaEstimates = {
-    temperature_c: 30.5,
-    humidity_pct: 35.0,
-    soil_moisture_pct: 28.0,
+    soil_moisture_pct: 35.0,
+    temperature_c: 28.0,
   };
 
   const tempDelta = telemetry.temperature_c - nasaEstimates.temperature_c;
@@ -154,228 +160,183 @@ export default function HardwareStationPage() {
   return (
     <div
       dir={isRtl ? "rtl" : "ltr"}
-      style={{
-        minHeight: "100vh",
-        background: "var(--background, #0f172a)",
-        color: "var(--foreground, #f8fafc)",
-        padding: "2rem 1.5rem",
-        fontFamily: "var(--font-sans, system-ui, sans-serif)",
-      }}
+      className="min-h-screen bg-[#F7F5EE] text-[#143626] py-8 px-4 sm:px-6 md:px-8 font-sans"
     >
       {/* Top Header */}
-      <div style={{ maxWidth: "1100px", margin: "0 auto", marginBottom: "2rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <div style={{ padding: "0.6rem", background: "rgba(16, 185, 129, 0.15)", borderRadius: "12px", border: "1px solid rgba(16, 185, 129, 0.4)" }}>
-              <Cpu style={{ color: "#34d399", width: 28, height: 28 }} />
+      <div className="max-w-5xl mx-auto mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200">
+              <Cpu className="text-emerald-700 w-7 h-7" />
             </div>
             <div>
-              <h1 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0 }}>
+              <h1 className="text-2xl font-bold font-serif text-[#143626] m-0">
                 {isRtl ? "محطة المعايرة الحقلية (ESP32 Ground-Truth Station)" : "ESP32 Ground-Truth Station"}
               </h1>
-              <p style={{ color: "#94a3b8", fontSize: "0.85rem", margin: "2px 0 0 0" }}>
-                {isRtl ? "معايرة فورية لبيانات الأقمار الصناعية (NASA POWER) بحساسات الحقل الميدانية" : "Real-time Ground-Truth Calibration against Satellite Observations"}
+              <p className="text-stone-600 text-xs sm:text-sm mt-0.5 m-0">
+                {isRtl
+                  ? "معايرة فورية لبيانات الأقمار الصناعية (NASA POWER) بحساسات الحقل الميدانية"
+                  : "Real-time Ground-Truth Calibration against Satellite Observations"}
               </p>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => setLang(lang === "ar" ? "en" : "ar")}
-              style={{
-                padding: "0.4rem 0.8rem",
-                borderRadius: "8px",
-                background: "rgba(255, 255, 255, 0.08)",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
-                color: "#f8fafc",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-              }}
+              className="inline-flex items-center gap-2 rounded-full border border-[#D6D2C4] bg-white px-3.5 py-1.5 text-xs font-medium text-[#143626] hover:bg-[#F7F5EE] transition"
             >
               {lang === "ar" ? "English" : "العربية"}
             </button>
             <Link
               href="/"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.5rem 1rem",
-                borderRadius: "8px",
-                background: "rgba(255, 255, 255, 0.06)",
-                border: "1px solid rgba(255, 255, 255, 0.12)",
-                color: "#94a3b8",
-                textDecoration: "none",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-              }}
+              className="inline-flex items-center gap-2 rounded-full border border-[#D6D2C4] bg-[#143626] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#245c49] transition shadow-xs"
             >
-              {isRtl ? <ArrowRight size={16} /> : <ArrowLeft size={16} />}
+              {isRtl ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
               {isRtl ? "العودة للوحة القيادة" : "Back to Planner"}
             </Link>
           </div>
         </div>
 
         {/* Live Device Status Banner */}
-        <div
-          style={{
-            marginTop: "1.5rem",
-            padding: "0.85rem 1.25rem",
-            borderRadius: "12px",
-            background: "rgba(16, 185, 129, 0.08)",
-            border: "1px solid rgba(16, 185, 129, 0.3)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "1rem",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            <Radio size={18} style={{ color: "#34d399" }} />
-            <span style={{ fontSize: "0.9rem" }}>
-              <strong>{isRtl ? "معرف الجهاز:" : "Device ID:"}</strong> <code style={{ color: "#a7f3d0" }}>{telemetry.device_id}</code>
+        <div className="mt-6 p-4 rounded-2xl bg-white border border-[#E2DFD5] shadow-xs flex flex-wrap justify-between items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <Radio size={18} className="text-emerald-600" />
+            <span className="text-xs sm:text-sm text-[#143626]">
+              <strong>{isRtl ? "معرف الجهاز:" : "Device ID:"}</strong>{" "}
+              <code className="text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded font-mono text-xs">
+                {telemetry.device_id}
+              </code>
             </span>
-            <span
-              style={{
-                display: "inline-block",
-                padding: "2px 8px",
-                borderRadius: "6px",
-                background: "rgba(16, 185, 129, 0.2)",
-                color: "#6ee7b7",
-                fontSize: "0.75rem",
-                fontWeight: 700,
-              }}
-            >
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 border border-emerald-200">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               {telemetry.active ? (isRtl ? "متصل مباشر" : "LIVE ONLINE") : (isRtl ? "وضع المحاكاة" : "SIMULATED")}
             </span>
           </div>
 
-          <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
-            {isRtl ? "قوة الإشارة (RSSI):" : "Signal (RSSI):"} <strong>{telemetry.rssi_dbm} dBm</strong> ·{" "}
-            {isRtl ? "آخر استقبال:" : "Last Telemetry:"} <strong>{new Date(telemetry.timestamp * 1000).toLocaleTimeString()}</strong>
+          <div className="text-xs text-stone-500">
+            {isRtl ? "قوة الإشارة (RSSI):" : "Signal (RSSI):"}{" "}
+            <strong className="text-[#143626]">{telemetry.rssi_dbm} dBm</strong> ·{" "}
+            {isRtl ? "آخر استقبال:" : "Last Telemetry:"}{" "}
+            <strong className="text-[#143626]">{new Date(telemetry.timestamp * 1000).toLocaleTimeString()}</strong>
           </div>
         </div>
       </div>
 
       {/* Main Grid: Live Telemetry Gauges */}
-      <div style={{ maxWidth: "1100px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
+      <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Soil Moisture */}
-        <div style={{ padding: "1.25rem", borderRadius: "14px", background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-            <span style={{ color: "#94a3b8", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Droplets size={16} style={{ color: "#60a5fa" }} />
-              {isRtl ? "رطوبة التربة (Capacitive ADC)" : "Soil Moisture (ADC)"}
+        <div className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-xs font-medium text-stone-600 flex items-center gap-1.5">
+              <Droplets size={16} className="text-sky-600" />
+              {isRtl ? "رطوبة التربة (ADC)" : "Soil Moisture (ADC)"}
             </span>
-            <small style={{ color: "#64748b" }}>GPIO 34</small>
+            <span className="text-[11px] font-mono text-stone-400">GPIO 34</span>
           </div>
-          <div style={{ fontSize: "2rem", fontWeight: 800, color: "#38bdf8", marginBottom: "0.5rem" }}>
+          <div className="text-3xl font-bold font-serif text-[#143626] mb-2">
             {telemetry.soil_moisture_pct.toFixed(1)}%
           </div>
-          <div style={{ background: "rgba(255, 255, 255, 0.1)", height: "8px", borderRadius: "4px", overflow: "hidden", marginBottom: "0.5rem" }}>
+          <div className="bg-stone-100 h-2 rounded-full overflow-hidden mb-2">
             <div
-              style={{
-                background: telemetry.soil_moisture_pct > 60 ? "#10b981" : telemetry.soil_moisture_pct > 30 ? "#3b82f6" : "#f59e0b",
-                height: "100%",
-                width: `${Math.min(100, telemetry.soil_moisture_pct)}%`,
-                transition: "width 0.4s ease",
-              }}
+              className={`h-full transition-all duration-500 ${
+                telemetry.soil_moisture_pct > 60
+                  ? "bg-emerald-600"
+                  : telemetry.soil_moisture_pct > 30
+                  ? "bg-sky-600"
+                  : "bg-amber-600"
+              }`}
+              style={{ width: `${Math.min(100, telemetry.soil_moisture_pct)}%` }}
             />
           </div>
-          <small style={{ color: "#64748b" }}>Raw ADC: {telemetry.soil_raw_adc} / 4095</small>
+          <span className="text-[11px] text-stone-500">Raw ADC: {telemetry.soil_raw_adc} / 4095</span>
         </div>
 
         {/* Air Temperature */}
-        <div style={{ padding: "1.25rem", borderRadius: "14px", background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-            <span style={{ color: "#94a3b8", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Thermometer size={16} style={{ color: "#f87171" }} />
+        <div className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-xs font-medium text-stone-600 flex items-center gap-1.5">
+              <Thermometer size={16} className="text-rose-600" />
               {isRtl ? "حرارة الحقل (BME680)" : "Field Temperature"}
             </span>
-            <small style={{ color: "#64748b" }}>I2C 0x76/0x77</small>
+            <span className="text-[11px] font-mono text-stone-400">I2C 0x76</span>
           </div>
-          <div style={{ fontSize: "2rem", fontWeight: 800, color: "#f87171", marginBottom: "0.5rem" }}>
+          <div className="text-3xl font-bold font-serif text-[#143626] mb-2">
             {telemetry.temperature_c.toFixed(1)} °C
           </div>
-          <small style={{ color: "#94a3b8" }}>
+          <span className="text-[11px] text-stone-600">
             {isRtl ? "تقييم الإجهاد الحراري:" : "Heat Stress:"}{" "}
-            <strong style={{ color: telemetry.temperature_c > 35 ? "#ef4444" : "#10b981" }}>
+            <strong className={telemetry.temperature_c > 35 ? "text-rose-600 font-semibold" : "text-emerald-700 font-semibold"}>
               {telemetry.temperature_c > 35 ? (isRtl ? "إجهاد مرتفع" : "Critical") : (isRtl ? "طبيعي" : "Optimal")}
             </strong>
-          </small>
+          </span>
         </div>
 
         {/* Relative Humidity */}
-        <div style={{ padding: "1.25rem", borderRadius: "14px", background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-            <span style={{ color: "#94a3b8", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Wind size={16} style={{ color: "#a78bfa" }} />
+        <div className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-xs font-medium text-stone-600 flex items-center gap-1.5">
+              <Wind size={16} className="text-violet-600" />
               {isRtl ? "الرطوبة النسبية" : "Relative Humidity"}
             </span>
-            <small style={{ color: "#64748b" }}>BME680</small>
+            <span className="text-[11px] font-mono text-stone-400">BME680</span>
           </div>
-          <div style={{ fontSize: "2rem", fontWeight: 800, color: "#a78bfa", marginBottom: "0.5rem" }}>
+          <div className="text-3xl font-bold font-serif text-[#143626] mb-2">
             {telemetry.humidity_pct.toFixed(1)} %
           </div>
-          <small style={{ color: "#64748b" }}>Pressure: {telemetry.pressure_hpa.toFixed(1)} hPa</small>
+          <span className="text-[11px] text-stone-500">Pressure: {telemetry.pressure_hpa.toFixed(1)} hPa</span>
         </div>
 
-        {/* Soil VOC / Gas Resistance */}
-        <div style={{ padding: "1.25rem", borderRadius: "14px", background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-            <span style={{ color: "#94a3b8", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Gauge size={16} style={{ color: "#fbbf24" }} />
+        {/* Soil Gas Resistance */}
+        <div className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-xs font-medium text-stone-600 flex items-center gap-1.5">
+              <Gauge size={16} className="text-amber-600" />
               {isRtl ? "نشاط التربة الحيوي (VOC)" : "Soil Gas Resistance"}
             </span>
-            <small style={{ color: "#64748b" }}>MOX</small>
+            <span className="text-[11px] font-mono text-stone-400">MOX</span>
           </div>
-          <div style={{ fontSize: "2rem", fontWeight: 800, color: "#fbbf24", marginBottom: "0.5rem" }}>
+          <div className="text-3xl font-bold font-serif text-[#143626] mb-2">
             {telemetry.gas_resistance_kohm.toFixed(1)} kΩ
           </div>
-          <small style={{ color: "#64748b" }}>{isRtl ? "مؤشر التنفس الميكروبي" : "Microbial Respiration Index"}</small>
+          <span className="text-[11px] text-stone-500">
+            {isRtl ? "مؤشر التنفس الميكروبي" : "Microbial Respiration Index"}
+          </span>
         </div>
       </div>
 
       {/* Satellite vs. ESP32 Ground-Truth Delta Table */}
-      <div
-        style={{
-          maxWidth: "1100px",
-          margin: "0 auto",
-          background: "rgba(30, 41, 59, 0.6)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          borderRadius: "14px",
-          padding: "1.5rem",
-          marginBottom: "2rem",
-        }}
-      >
-        <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 1rem 0", display: "flex", alignItems: "center", gap: "8px" }}>
-          <Activity size={20} style={{ color: "#38bdf8" }} />
-          {isRtl ? "مقارنة القمر الصناعي (NASA POWER) مع قراءات الحساس الميداني (ESP32)" : "Satellite (NASA POWER) vs. Ground-Truth (ESP32) Delta"}
+      <div className="max-w-5xl mx-auto bg-white border border-[#E2DFD5] rounded-2xl p-6 shadow-xs mb-8">
+        <h3 className="text-base font-bold text-[#143626] mb-4 flex items-center gap-2">
+          <Activity size={18} className="text-emerald-700" />
+          {isRtl
+            ? "مقارنة القمر الصناعي (NASA POWER) مع قراءات الحساس الميداني (ESP32)"
+            : "Satellite (NASA POWER) vs. Ground-Truth (ESP32) Delta"}
         </h3>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs sm:text-sm text-start border-collapse">
             <thead>
-              <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.1)", textAlign: isRtl ? "right" : "left", color: "#94a3b8" }}>
-                <th style={{ padding: "0.75rem" }}>{isRtl ? "المتغير الزراعي" : "Agronomic Variable"}</th>
-                <th style={{ padding: "0.75rem" }}>{isRtl ? "تقدير القمر الصناعي (NASA POWER)" : "Satellite Macro-Estimate"}</th>
-                <th style={{ padding: "0.75rem" }}>{isRtl ? "قياس الحساس الميداني (ESP32 Ground)" : "In-Situ Sensor (ESP32)"}</th>
-                <th style={{ padding: "0.75rem" }}>{isRtl ? "الفارق والملاحظة" : "Ground Delta & Significance"}</th>
+              <tr className="border-b border-[#E2DFD5] text-stone-500 font-semibold">
+                <th className="py-2.5 px-3 text-start">{isRtl ? "المتغير الزراعي" : "Agronomic Variable"}</th>
+                <th className="py-2.5 px-3 text-start">{isRtl ? "تقدير القمر الصناعي (NASA POWER)" : "Satellite Macro-Estimate"}</th>
+                <th className="py-2.5 px-3 text-start">{isRtl ? "قياس الحساس الميداني (ESP32)" : "In-Situ Sensor (ESP32)"}</th>
+                <th className="py-2.5 px-3 text-start">{isRtl ? "الفارق والملاحظة الحقلية" : "Ground Delta & Significance"}</th>
               </tr>
             </thead>
-            <tbody>
-              <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}>
-                <td style={{ padding: "0.75rem", fontWeight: 600 }}>{isRtl ? "رطوبة التربة الجذرية" : "Root-Zone Moisture"}</td>
-                <td style={{ padding: "0.75rem", color: "#94a3b8" }}>{nasaEstimates.soil_moisture_pct}%</td>
-                <td style={{ padding: "0.75rem", color: "#38bdf8", fontWeight: 700 }}>{telemetry.soil_moisture_pct.toFixed(1)}%</td>
-                <td style={{ padding: "0.75rem" }}>
-                  <span style={{ color: moistureDelta >= 0 ? "#34d399" : "#f87171" }}>
+            <tbody className="divide-y divide-[#E2DFD5]/60">
+              <tr>
+                <td className="py-3 px-3 font-semibold text-[#143626]">{isRtl ? "رطوبة التربة الجذرية" : "Root-Zone Moisture"}</td>
+                <td className="py-3 px-3 text-stone-600">{nasaEstimates.soil_moisture_pct}%</td>
+                <td className="py-3 px-3 font-bold text-sky-700">{telemetry.soil_moisture_pct.toFixed(1)}%</td>
+                <td className="py-3 px-3">
+                  <span className={`font-semibold ${moistureDelta >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
                     {moistureDelta >= 0 ? `+${moistureDelta.toFixed(1)}%` : `${moistureDelta.toFixed(1)}%`}
                   </span>{" "}
-                  <small style={{ color: "#64748b" }}>
+                  <span className="text-stone-500 text-xs">
                     {moistureDelta > 20
                       ? isRtl
-                        ? "(رصد ري محلي حديث لم يلحظه القمر الصناعي)"
+                        ? "(رصد ري موضعي حديث لم يلحظه القمر الصناعي)"
                         : "(Recent irrigation detected)"
                       : moistureDelta < -10
                       ? isRtl
@@ -384,18 +345,18 @@ export default function HardwareStationPage() {
                       : isRtl
                       ? "(متطابق مع التقدير العام)"
                       : "(Consistent with baseline)"}
-                  </small>
+                  </span>
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.75rem", fontWeight: 600 }}>{isRtl ? "درجة حرارة الهواء" : "Air Temperature"}</td>
-                <td style={{ padding: "0.75rem", color: "#94a3b8" }}>{nasaEstimates.temperature_c} °C</td>
-                <td style={{ padding: "0.75rem", color: "#f87171", fontWeight: 700 }}>{telemetry.temperature_c.toFixed(1)} °C</td>
-                <td style={{ padding: "0.75rem" }}>
-                  <span style={{ color: tempDelta > 0 ? "#f87171" : "#34d399" }}>
+                <td className="py-3 px-3 font-semibold text-[#143626]">{isRtl ? "درجة حرارة الهواء" : "Air Temperature"}</td>
+                <td className="py-3 px-3 text-stone-600">{nasaEstimates.temperature_c} °C</td>
+                <td className="py-3 px-3 font-bold text-rose-700">{telemetry.temperature_c.toFixed(1)} °C</td>
+                <td className="py-3 px-3">
+                  <span className={`font-semibold ${tempDelta > 0 ? "text-rose-700" : "text-emerald-700"}`}>
                     {tempDelta >= 0 ? `+${tempDelta.toFixed(1)} °C` : `${tempDelta.toFixed(1)} °C`}
                   </span>{" "}
-                  <small style={{ color: "#64748b" }}>
+                  <span className="text-stone-500 text-xs">
                     {tempDelta > 2
                       ? isRtl
                         ? "(حرارة إشعاعية حقلية أعلى من متوسط النطاق)"
@@ -403,7 +364,7 @@ export default function HardwareStationPage() {
                       : isRtl
                       ? "(ضمن الهامش الطبيعي)"
                       : "(Within expected margin)"}
-                  </small>
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -412,76 +373,35 @@ export default function HardwareStationPage() {
       </div>
 
       {/* Live Demo Scenario Injector & Apply Action */}
-      <div
-        style={{
-          maxWidth: "1100px",
-          margin: "0 auto",
-          background: "rgba(30, 41, 59, 0.6)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          borderRadius: "14px",
-          padding: "1.5rem",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "1.5rem",
-        }}
-      >
+      <div className="max-w-5xl mx-auto bg-white border border-[#E2DFD5] rounded-2xl p-6 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h4 style={{ fontSize: "1rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>
+          <h4 className="text-base font-bold text-[#143626] m-0 mb-1">
             {isRtl ? "محاكي العرض السريع (Live Demo Injector)" : "Live Presentation Scenario Injector"}
           </h4>
-          <p style={{ color: "#94a3b8", fontSize: "0.8rem", margin: 0 }}>
+          <p className="text-stone-600 text-xs sm:text-sm m-0">
             {isRtl
               ? "جرّب تغيير حالة الحقل فورياً لاختبار استجابة النظام أمام لجنة التحكيم:"
               : "Inject real-time sensor events for zero-failure competition demonstrations:"}
           </p>
-          <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
+          <div className="flex flex-wrap gap-2 mt-3">
             <button
               onClick={() => injectScenario("drought")}
               disabled={loading}
-              style={{
-                padding: "0.45rem 0.9rem",
-                borderRadius: "8px",
-                background: "rgba(239, 68, 68, 0.15)",
-                border: "1px solid rgba(239, 68, 68, 0.4)",
-                color: "#fca5a5",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-                fontWeight: 600,
-              }}
+              className="px-3.5 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold hover:bg-rose-100 transition"
             >
               {isRtl ? "جفاف حاد (18% رطوبة)" : "Severe Drought (18%)"}
             </button>
             <button
               onClick={() => injectScenario("irrigated")}
               disabled={loading}
-              style={{
-                padding: "0.45rem 0.9rem",
-                borderRadius: "8px",
-                background: "rgba(16, 185, 129, 0.15)",
-                border: "1px solid rgba(16, 185, 129, 0.4)",
-                color: "#6ee7b7",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-                fontWeight: 600,
-              }}
+              className="px-3.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition"
             >
               {isRtl ? "بعد الري (78% رطوبة)" : "Post-Irrigation (78%)"}
             </button>
             <button
               onClick={() => injectScenario("heatwave")}
               disabled={loading}
-              style={{
-                padding: "0.45rem 0.9rem",
-                borderRadius: "8px",
-                background: "rgba(245, 158, 11, 0.15)",
-                border: "1px solid rgba(245, 158, 11, 0.4)",
-                color: "#fde68a",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-                fontWeight: 600,
-              }}
+              className="px-3.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition"
             >
               {isRtl ? "موجة حرارة (41.5°C)" : "Heatwave (41.5°C)"}
             </button>
@@ -491,23 +411,11 @@ export default function HardwareStationPage() {
         <div>
           <button
             onClick={applyToPlanner}
-            style={{
-              padding: "0.85rem 1.75rem",
-              borderRadius: "12px",
-              background: applied ? "#059669" : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-              color: "#ffffff",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "0.95rem",
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              gap: "0.6rem",
-              boxShadow: "0 4px 15px rgba(16, 185, 129, 0.3)",
-              transition: "transform 0.15s ease",
-            }}
+            className={`px-6 py-3 rounded-xl text-white font-semibold text-sm inline-flex items-center gap-2 shadow-xs transition ${
+              applied ? "bg-emerald-700" : "bg-[#143626] hover:bg-[#245c49]"
+            }`}
           >
-            {applied ? <CheckCircle2 size={20} /> : <Zap size={20} />}
+            {applied ? <CheckCircle2 size={18} /> : <Zap size={18} />}
             {isRtl ? "تطبيق قراءات الحساس على خطة الزراعة" : "Apply Sensor Data to Rotation Planner"}
           </button>
         </div>

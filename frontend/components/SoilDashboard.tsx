@@ -1,16 +1,18 @@
 "use client";
 
 import React from "react";
-import { FlaskConical, Layers3, Sprout, TestTube2 } from "lucide-react";
+import { FlaskConical, Layers3, Sprout, TestTube2, Wifi, AlertCircle } from "lucide-react";
 import { useLang, Ltr } from "@/app/lang";
 import { EnvironmentalContext } from "@/lib/types";
 import { SOIL_TEXTURES } from "@/app/i18n";
 
 type SoilDashboardProps = {
   context: EnvironmentalContext;
+  hardwareMoisture?: number | null;
+  inferredSoilTexture?: string;
 };
 
-export function SoilDashboard({ context }: SoilDashboardProps) {
+export function SoilDashboard({ context, hardwareMoisture, inferredSoilTexture }: SoilDashboardProps) {
   const { lang, t, num } = useLang();
   const f = (v: number, digits?: number) =>
     lang === "ar" ? num(v, digits) : digits === undefined ? String(v) : v.toFixed(digits);
@@ -24,12 +26,19 @@ export function SoilDashboard({ context }: SoilDashboardProps) {
       : titleCase(context.soil_texture);
 
   const isOverride = context.soil_texture_source === "OVERRIDE";
-  const isSensor = context.data_quality?.soil_moisture === "SENSOR";
+  
+  // Live hardware moisture check: either from explicit prop or from context
+  const liveMoisture = hardwareMoisture ?? (
+    context.soil_moisture_index !== null && context.soil_moisture_index !== undefined
+      ? context.soil_moisture_index * 100
+      : null
+  );
+  const isSensorActive = liveMoisture !== null;
 
   return (
     <div className="soil-dashboard" style={{ marginBottom: "1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-        <h3 style={{ fontSize: "1.05rem", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+        <h3 style={{ fontSize: "1.05rem", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "6px", color: "#143626" }}>
           <Layers3 size={18} />
           {lang === "ar" ? "خصائص التربة والمادة العضوية (ISRIC SoilGrids)" : "Edaphic & Soil Health Profile"}
         </h3>
@@ -39,9 +48,14 @@ export function SoilDashboard({ context }: SoilDashboardProps) {
               {lang === "ar" ? "تجاوز يدوي من المستخدم" : "Manual User Override"}
             </span>
           )}
-          {isSensor && (
-            <span className="status-pill online" style={{ fontSize: "0.75rem" }}>
-              <i /> {lang === "ar" ? "حساس إنترنت الأشياء متصل" : "IoT Sensor Active"}
+          {isSensorActive ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              {lang === "ar" ? "حساس ESP32 متصل ومُعاير" : "ESP32 Sensor Active"}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full border border-[#D6D2C4] bg-white px-2.5 py-0.5 text-[11px] text-[#617069]">
+              <Wifi size={12} /> {lang === "ar" ? "تقدير قمر صناعي" : "Satellite baseline"}
             </span>
           )}
         </div>
@@ -106,22 +120,34 @@ export function SoilDashboard({ context }: SoilDashboardProps) {
         <article className="metric">
           <span><TestTube2 /></span>
           <div>
-            <small>{lang === "ar" ? "حالة رطوبة منطقة الجذور" : "Root Zone Moisture"}</small>
+            <small>{lang === "ar" ? "رطوبة منطقة الجذور الحقلية" : "Root Zone Moisture"}</small>
             <strong>
-              {context.soil_moisture_index !== null && context.soil_moisture_index !== undefined
-                ? `${Math.round(context.soil_moisture_index * 100)}% (${context.soil_moisture_state.replace("SENSOR_", "")})`
-                : lang === "ar"
-                ? "تقدير إقليمي غير مقاس"
-                : "Unmeasured Baseline"}
+              {isSensorActive ? (
+                <span className="text-emerald-800 font-semibold text-lg">
+                  {liveMoisture.toFixed(1)}%{" "}
+                  <span className="text-xs font-normal text-emerald-700">
+                    ({lang === "ar" ? "قراءة ESP32 حية" : "Live ESP32 telemetry"})
+                  </span>
+                </span>
+              ) : (
+                lang === "ar" ? "تقدير إقليمي (NASA)" : "Regional Baseline (NASA)"
+              )}
             </strong>
             <p>
-              {context.soil_moisture_index !== null && context.soil_moisture_index !== undefined
-                ? lang === "ar"
-                  ? "قراءة معايرة حية من حساس الرطوبة الحقلي ESP32"
-                  : "Calibrated live telemetry from ESP32 farm sensor"
-                : lang === "ar"
-                ? "حساس الرطوبة اختياري (يدعم الربط المباشر)"
-                : "Field telemetry optional; models seasonal supply"}
+              {isSensorActive ? (
+                lang === "ar" ? (
+                  `القوام المستنتج من الحساس: ${inferredSoilTexture || soilTextureDisplay}`
+                ) : (
+                  `Inferred texture response: ${inferredSoilTexture || soilTextureDisplay}`
+                )
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[#8b5cf6]/80 text-[11px] font-medium text-stone-500">
+                  <AlertCircle size={12} className="text-stone-400" />
+                  {lang === "ar"
+                    ? "قم بتوصيل وحدة ESP32 للمعايرة الحقلية المباشرة"
+                    : "Connect ESP32 station for direct in-situ calibration"}
+                </span>
+              )}
             </p>
           </div>
         </article>

@@ -36,6 +36,7 @@ class FarmRequest(BaseModel):
     soil_moisture_override: float | None = None
     temperature_override: float | None = None
     use_ml_blend: bool = True
+    selected_crop_ids: list[str] | None = None
 
 
 class SimulationRequest(BaseModel):

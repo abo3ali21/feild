@@ -149,6 +149,7 @@ async def evaluate_request(request: FarmRequest, evaluation_id: str | None = Non
             request.farmer_priority,
             irrigation_supply_mm=request.irrigation_supply_mm,
             use_ml_blend=request.use_ml_blend,
+            allowed_crop_ids=request.selected_crop_ids,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -192,7 +193,13 @@ async def simulate(request: SimulationRequest):
     context.rainfall_status = rainfall_status(context.precipitation_anomaly_pct)
     context.heat_stress_days = min(90, context.heat_stress_days + round(request.temperature_change_c * 6))
     context.annual_gdd *= 1 + request.temperature_change_c * .035
-    rotations, rejected = rank_rotations(context, farm_request.current_crop_id, request.irrigation_available, farm_request.farmer_priority)
+    rotations, rejected = rank_rotations(
+        context,
+        farm_request.current_crop_id,
+        request.irrigation_available,
+        farm_request.farmer_priority,
+        allowed_crop_ids=farm_request.selected_crop_ids,
+    )
     if not rotations:
         raise HTTPException(status_code=422, detail="No sequence passed the scenario's conservative hard filters.")
     simulated_id = str(uuid4())

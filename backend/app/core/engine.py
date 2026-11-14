@@ -232,8 +232,16 @@ def rank_rotations(
     priority: Priority,
     irrigation_supply_mm: float | None = None,
     use_ml_blend: bool = True,
+    allowed_crop_ids: list[str] | None = None,
 ) -> tuple[list[Rotation], list[Decision]]:
     crops = load_crops()
+    if allowed_crop_ids and len(allowed_crop_ids) >= 3:
+        allowed_set = set(allowed_crop_ids)
+        allowed_set.add(current_crop_id)
+        filtered = [c for c in crops if c.crop_id in allowed_set]
+        if len(filtered) >= 3:
+            crops = tuple(filtered)
+
     by_id = {crop.crop_id: crop for crop in crops}
     if current_crop_id not in by_id:
         raise ValueError(f"Unknown crop: {current_crop_id}")
@@ -257,6 +265,12 @@ def rank_rotations(
         if len({crop.family for crop in sequence}) < 3:
             continue
         candidates.append(score_rotation(sequence, context, irrigated, priority, irrigation_supply_mm=irrigation_supply_mm, use_ml_blend=use_ml_blend))
+
+    # If strict 3-family filter leaves no candidate under allowed crops, relax to consecutive family break
+    if not candidates and allowed_crop_ids:
+        for sequence in itertools.permutations(viable, 3):
+            if sequence[0].family != sequence[1].family and sequence[1].family != sequence[2].family:
+                candidates.append(score_rotation(sequence, context, irrigated, priority, irrigation_supply_mm=irrigation_supply_mm, use_ml_blend=use_ml_blend))
 
     # Sort descending by overall score, then water score
     candidates.sort(key=lambda item: (-item.scores.overall, -item.scores.water, tuple(c.crop_id for c in item.sequence)))
