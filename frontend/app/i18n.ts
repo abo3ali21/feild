@@ -1,6 +1,9 @@
 export type Lang = "en" | "ar";
 
 export const CROPS: Record<string, { en: string; ar: string }> = {
+  wheat: { en: "Wheat", ar: "القمح البلدي" },
+  berseem: { en: "Egyptian Berseem Clover", ar: "البرسيم المصري" },
+  fava_bean: { en: "Fava Bean", ar: "الفول البلدي" },
   maize: { en: "Maize", ar: "الذرة الشامية" },
   pearl_millet: { en: "Pearl millet", ar: "الدخن اللؤلؤي" },
   sorghum: { en: "Sorghum", ar: "الذرة الرفيعة" },
@@ -9,7 +12,7 @@ export const CROPS: Record<string, { en: string; ar: string }> = {
   chickpea: { en: "Chickpea", ar: "الحمّص" },
   groundnut: { en: "Groundnut", ar: "فول السوداني" },
   potato: { en: "Potato", ar: "البطاطس" },
-  tomato: { en: "Tomato", ar: "البندورة" },
+  tomato: { en: "Tomato", ar: "الطماطم" },
   canola: { en: "Rapeseed / Canola", ar: "اللفت الزيتي (كانيولا)" },
   sunflower: { en: "Sunflower", ar: "عباد الشمس" },
   cassava: { en: "Cassava", ar: "الكاسافا" },
@@ -64,6 +67,7 @@ export const WARNING_LABELS: Record<string, { en: string; ar: string }> = {
 };
 
 export const DEMO_LABELS: Record<string, { name: string; country: string; system: string }> = {
+  luxor: { name: "وادي النيل / الأقصر", country: "مصر", system: "مروي" },
   sahel: { name: "الساحل شبه القاحل", country: "السنغال", system: "بعل" },
   iowa: { name: "حزام الذرة في آيوا", country: "الولايات المتحدة", system: "بعل" },
   punjab: { name: "بنجاب / حوض السند", country: "باكستان", system: "مروي" },
@@ -85,8 +89,8 @@ export const en = {
     micro: "Comparative guidance, not a yield forecast. Verify recommendations with local extension guidance before planting.",
   },
   planner: {
-    steps: ["Location", "Conditions", "Primary goal", "Review"],
-    titles: ["Define the farm", "Current conditions", "What matters most?", "Review the farm"],
+    steps: ["Location", "Conditions & IoT", "5-Crop Selector", "Review & NASA Analysis"],
+    titles: ["Define the farm", "Current conditions & IoT calibration", "Select 5 crops for 3-year rotations", "Review farm & NASA satellite analysis"],
     stepAria: "Step", stepAriaOf: "of 4",
     back: "Back", continue: "Continue", analyse: "Analyse rotations",
   },
@@ -189,8 +193,8 @@ export const ar: typeof en = {
     micro: "إرشادات مقارنة وليست توقعًا للمحصول. تحقق من التوصيات مع الإرشاد الزراعي المحلي قبل الزراعة.",
   },
   planner: {
-    steps: ["الموقع", "الظروف", "الهدف الرئيسي", "المراجعة"],
-    titles: ["حدّد المزرعة", "الظروف الحالية", "ما الأهم بالنسبة لك؟", "مراجعة بيانات المزرعة"],
+    steps: ["الموقع", "الظروف والحساس", "مخطط الـ 5 محاصيل", "المراجعة وتحليل ناسا"],
+    titles: ["تحديد موقع المزرعة", "الظروف الحالية ومعايرة الحساس", "اختيار الـ 5 محاصيل واستخراج الدورات", "مراجعة بيانات المزرعة وتحليل ناسا المباشر"],
     stepAria: "الخطوة", stepAriaOf: "من 4",
     back: "رجوع", continue: "متابعة", analyse: "حلّل الدورات الزراعية",
   },

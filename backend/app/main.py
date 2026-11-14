@@ -13,7 +13,7 @@ from fastapi import Body, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.calculations import precipitation_anomaly, rainfall_status
-from app.core.engine import load_crops, rank_rotations
+from app.core.engine import evaluate_selected_five_crops, infer_soil_texture_from_hardware, load_crops, rank_rotations
 from app.models.schemas import EvaluationResponse, FarmRequest, SensorReadingIn, SimulationRequest
 from app.services import sensor_store
 from app.services.environment import build_context, demo_profiles
@@ -262,4 +262,25 @@ def override_hardware_telemetry(payload: dict[str, Any] = Body(...)):
     LATEST_HARDWARE_TELEMETRY["timestamp"] = now
     LATEST_HARDWARE_TELEMETRY["active"] = True
     return {"status": "ok", **LATEST_HARDWARE_TELEMETRY}
+
+
+@app.post("/api/farms/evaluate-five")
+@app.post("/api/v1/farms/evaluate-five")
+def evaluate_five_crops_endpoint(payload: dict[str, Any] = Body(...)):
+    selected_crop_ids = payload.get("selected_crop_ids", ["wheat", "berseem", "maize", "soybean", "potato"])
+    soil_moisture_pct = float(payload.get("soil_moisture_pct", 52.0))
+    temp_c = float(payload.get("temp_c", 27.5))
+    priority = str(payload.get("priority", "water"))
+    result = evaluate_selected_five_crops(
+        selected_crop_ids=selected_crop_ids,
+        soil_moisture_pct=soil_moisture_pct,
+        temp_c=temp_c,
+        priority=priority,
+    )
+    soil_texture_info = infer_soil_texture_from_hardware(soil_moisture_pct, temp_c)
+    return {
+        "status": "ok",
+        "soil_texture_info": soil_texture_info,
+        **result,
+    }
 

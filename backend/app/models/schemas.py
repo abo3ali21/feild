@@ -64,6 +64,9 @@ class Crop(BaseModel):
     residue_score: float = Field(ge=0, le=1)
     irrigation_required: bool = False
     source_notes: str
+    name_ar: str | None = None
+    alternative_ids: list[str] | None = None
+    profit_index: float | None = None
 
 
 class EnvironmentalContext(BaseModel):

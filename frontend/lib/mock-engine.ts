@@ -5,6 +5,7 @@ export type Rotation = { rank:number;sequence:{year:number;crop_id:string;name:s
 export type Evaluation = { status:string;evaluation_id:string;environmental_context:{annual_gdd:number;seasonal_rainfall_mm:number;historical_rainfall_mm:number;precipitation_anomaly_pct:number;rainfall_status:string;heat_stress_days:number;soil_moisture_state:string;soil_texture:string;soil_ph:number;soil_organic_matter_pct:number;data_quality:Record<string,string>};data_provenance:{variable:string;source:string;status:string}[];recommended_rotations:Rotation[];rejected_examples?:{passed:boolean;rule:string;reason:string}[] };
 
 export const DEMOS:Demo[]=[
+  {id:"luxor",name:"Nile Valley / Luxor",country:"Egypt",system:"Irrigated",latitude:25.7013,longitude:32.6553,currentCrop:"wheat",soil:"SANDY_LOAM",irrigated:true,priority:"balanced"},
   {id:"sahel",name:"Semi-Arid Sahel",country:"Senegal",system:"Rainfed",latitude:14.1203,longitude:-16.0351,currentCrop:"groundnut",soil:"SANDY_LOAM",irrigated:false,priority:"drought_resilience"},
   {id:"iowa",name:"Iowa Corn Belt",country:"USA",system:"Rainfed",latitude:42.0308,longitude:-93.6319,currentCrop:"maize",soil:"LOAM",irrigated:false,priority:"soil_recovery"},
   {id:"punjab",name:"Punjab / Indus Basin",country:"Pakistan",system:"Irrigated",latitude:30.1575,longitude:71.5249,currentCrop:"cotton",soil:"CLAY_LOAM",irrigated:true,priority:"drought_resilience"},
@@ -12,6 +13,7 @@ export const DEMOS:Demo[]=[
   {id:"western_australia",name:"Western Wheat Belt",country:"Australia",system:"Rainfed",latitude:-31.48,longitude:117.16,currentCrop:"barley",soil:"SANDY_LOAM",irrigated:false,priority:"crop_diversity"},
 ];
 const profiles:Record<string,{rain:number;historic:number;heat:number;gdd:number;ph:number;om:number;sequences:string[][]}>={
+  luxor:{rain:10,historic:25,heat:45,gdd:3500,ph:7.8,om:1.0,sequences:[["wheat","berseem","maize"],["fava_bean","maize","wheat"],["berseem","sorghum","wheat"]]},
   sahel:{rain:410,historic:570,heat:22,gdd:1710,ph:6.1,om:1.1,sequences:[["pearl_millet","cowpea","sunflower"],["sorghum","sweet_potato","cowpea"],["cowpea","pearl_millet","sunflower"]]},
   iowa:{rain:610,historic:640,heat:7,gdd:1320,ph:6.5,om:2.8,sequences:[["soybean","sunflower","barley"],["cowpea","maize","canola"],["canola","soybean","sorghum"]]},
   punjab:{rain:285,historic:370,heat:31,gdd:1980,ph:7.8,om:.9,sequences:[["pearl_millet","cowpea","sunflower"],["sorghum","chickpea","canola"],["barley","sunflower","cowpea"]]},

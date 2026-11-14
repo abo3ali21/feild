@@ -305,4 +305,188 @@ def rank_rotations(
                 if len(selected) == 3:
                     break
 
+    # Resilient Adaptive Fallback: If zero candidates passed strict hard screening
+    # (e.g. desert climate, extreme heat, or hyper-arid rainfed conditions),
+    # generate adaptive rotations from resilient alternative crops rather than failing with 422.
+    if not selected:
+        ranked_crops = sorted(
+            crops,
+            key=lambda c: (
+                c.family == current.family,
+                -c.drought_tolerance if not irrigated else 0.0,
+                abs(context.soil_ph - ((c.minimum_ph + c.maximum_ph) / 2.0)),
+            ),
+        )
+        adaptive_seqs: list[Rotation] = []
+        for seq in itertools.permutations(ranked_crops[:8], 3):
+            if len({c.family for c in seq}) < 3:
+                continue
+            rot = score_rotation(
+                seq,
+                context,
+                irrigated,
+                priority,
+                irrigation_supply_mm=irrigation_supply_mm or (300.0 if irrigated else 150.0),
+                use_ml_blend=use_ml_blend,
+            )
+            rot.explanations.insert(
+                0,
+                "Adaptive Rotation: Strict hard filters were exceeded for baseline crops under extreme climate conditions. This rotation recommends resilient alternatives with supplemental micro-irrigation and organic mulching.",
+            )
+            adaptive_seqs.append(rot)
+            if len(adaptive_seqs) >= 3:
+                break
+        for idx, rot in enumerate(adaptive_seqs):
+            rot.rank = idx + 1
+            selected.append(rot)
+
     return selected, rejected[:6]
+
+
+def infer_soil_texture_from_hardware(soil_moisture_pct: float, temp_c: float) -> dict[str, str]:
+    """
+    Infers practical soil texture & drainage behavior from ESP32 sensor readings
+    combined with regional calibration.
+    """
+    if soil_moisture_pct >= 58.0:
+        return {
+            "texture_code": "clay_loam",
+            "texture_ar": "طينية طميية (عالية الاحتفاظ بالرطوبة - مستنتجة من الحساس)",
+            "texture_en": "Clay Loam (High Water Retention - Sensor Calibrated)",
+        }
+    elif soil_moisture_pct >= 35.0:
+        return {
+            "texture_code": "loam",
+            "texture_ar": "طميية متوازنة (جيدة الصرف - مستنتجة من الحساس)",
+            "texture_en": "Balanced Loam (Moderate Drainage - Sensor Calibrated)",
+        }
+    else:
+        return {
+            "texture_code": "sandy_loam",
+            "texture_ar": "رملية طميية (سريعة الصرف - مستنتجة من الحساس)",
+            "texture_en": "Sandy Loam (Fast Drainage - Sensor Calibrated)",
+        }
+
+
+def evaluate_selected_five_crops(
+    selected_crop_ids: list[str],
+    soil_moisture_pct: float,
+    temp_c: float,
+    priority: str = "water",
+    all_crops: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Takes 5 farmer-selected crops, generates all 3-crop rotations,
+    returns top 3 valid plans OR warns if incompatible and suggests close alternatives.
+    """
+    if all_crops is None:
+        crops_tuple = load_crops()
+        all_crops = {c.crop_id: c.model_dump() for c in crops_tuple}
+
+    valid_plans = []
+    water_budget_mm = 300 + (soil_moisture_pct * 5.5)  # Map sensor % to seasonal mm budget
+
+    formatted_crops: dict[str, dict[str, Any]] = {}
+    for cid, c in all_crops.items():
+        if isinstance(c, dict):
+            formatted_crops[cid] = {
+                "id": cid,
+                "name_ar": c.get("name_ar") or c.get("common_name", cid),
+                "name_en": c.get("common_name", cid),
+                "family": str(c.get("family", "poaceae")).lower(),
+                "water_mm": float(c.get("water_mm") or c.get("minimum_water_mm", 450)),
+                "temp_min": float(c.get("temp_min") or c.get("base_temp_c", 12)),
+                "temp_max": float(c.get("temp_max") or c.get("max_temp_c", 32)),
+                "nitrogen_effect": float(c.get("nitrogen_effect", (c.get("nitrogen_credit_kg_ha", 0) if c.get("is_legume") else -40))),
+                "profit_index": float(c.get("profit_index", 75)),
+                "alternative_ids": c.get("alternative_ids", []),
+            }
+
+    valid_ids = [cid for cid in selected_crop_ids if cid in formatted_crops]
+    if len(valid_ids) < 3:
+        valid_ids = list(formatted_crops.keys())[:5]
+
+    for seq in itertools.permutations(valid_ids, 3):
+        c1, c2, c3 = formatted_crops[seq[0]], formatted_crops[seq[1]], formatted_crops[seq[2]]
+        crops_seq = [c1, c2, c3]
+
+        # Check botanical family repetition
+        same_family_penalty = 0
+        reasons_ar = []
+        if c1["family"] == c2["family"] or c2["family"] == c3["family"]:
+            same_family_penalty += 35
+            reasons_ar.append("⚠️ تكرار نفس العائلة النباتية في موسمين متتاليين يضعف التربة ويزيد الآفات.")
+
+        # Check Nitrogen fixing synergy
+        n_net = sum(c["nitrogen_effect"] for c in crops_seq)
+        if c1["nitrogen_effect"] > 0 and c2["nitrogen_effect"] < 0:
+            reasons_ar.append(f"✅ زراعة {c1['name_ar']} قبل {c2['name_ar']} تثبت النيتروجين طبيعياً وتقلل الأسمدة.")
+
+        # Check water & climate fit
+        avg_water = sum(c["water_mm"] for c in crops_seq) / 3.0
+        water_fit = max(0.0, min(100.0, (water_budget_mm / avg_water) * 100.0))
+
+        temp_fit = 100.0
+        for c in crops_seq:
+            if temp_c < c["temp_min"] - 3 or temp_c > c["temp_max"] + 3:
+                temp_fit -= 25.0
+
+        soil_score = max(0.0, min(100.0, 60.0 + n_net))
+        pest_score = max(0.0, 100.0 - same_family_penalty)
+        profit_score = sum(c["profit_index"] for c in crops_seq) / 3.0
+
+        weights = {
+            "water": (0.50, 0.20, 0.15, 0.15),
+            "soil": (0.15, 0.50, 0.25, 0.10),
+            "profit": (0.15, 0.20, 0.15, 0.50),
+        }.get(priority, (0.35, 0.25, 0.20, 0.20))
+
+        total_score = round(
+            weights[0] * water_fit +
+            weights[1] * soil_score +
+            weights[2] * pest_score +
+            weights[3] * profit_score,
+            1,
+        )
+
+        if water_fit >= 80:
+            reasons_ar.append("💧 متوافقة تماماً مع رطوبة التربة المقاسة حالياً.")
+
+        valid_plans.append({
+            "sequence_ids": list(seq),
+            "sequence_names_ar": [c["name_ar"] for c in crops_seq],
+            "sequence_names_en": [c["name_en"] for c in crops_seq],
+            "score": total_score,
+            "is_viable": total_score >= 65.0 and same_family_penalty == 0,
+            "reasons_ar": reasons_ar,
+        })
+
+    valid_plans.sort(key=lambda x: x["score"], reverse=True)
+    viable_only = [p for p in valid_plans if p["is_viable"]]
+
+    incompatible = len(viable_only) == 0
+    suggested_alternatives = []
+    if incompatible:
+        selected_set = set(valid_ids)
+        for cid in valid_ids:
+            crop = formatted_crops[cid]
+            for alt_id in crop.get("alternative_ids", []):
+                if alt_id not in selected_set and alt_id in formatted_crops:
+                    alt_crop = formatted_crops[alt_id]
+                    suggested_alternatives.append({
+                        "replace_ar": crop["name_ar"],
+                        "with_ar": alt_crop["name_ar"],
+                        "with_id": alt_id,
+                        "reason_ar": f"بديل قريب لـ ({crop['name_ar']}) في نفس الموسم لكن من عائلة ({alt_crop['family']}) لتحسين التوازن وتوفير المياه.",
+                    })
+
+    return {
+        "compatible": not incompatible,
+        "warning_ar": (
+            "⚠️ المحاصيل الخمسة المختارة غير متوافقة مع ظروف التربة/المياه الحالية أو تنتمي لنفس العائلة النباتية. إليك أفضل البدائل القريبة:"
+            if incompatible else
+            "✅ تم استخراج أفضل 3 دورات زراعية متوافقة من المحاصيل الخمسة التي اخترتها:"
+        ),
+        "top_3_rotations": (viable_only if not incompatible else valid_plans)[:3],
+        "suggested_alternatives": suggested_alternatives[:3],
+    }

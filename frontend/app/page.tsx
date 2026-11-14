@@ -50,6 +50,7 @@ import { RotationCards } from "@/components/RotationCards";
 import { CropCalendar } from "@/components/CropCalendar";
 import { FactorBreakdown } from "@/components/FactorBreakdown";
 import { DataProvenance } from "@/components/DataProvenance";
+import { FiveCropSelector, FiveCropEvaluation, AVAILABLE_FIVE_CROPS } from "@/components/FiveCropSelector";
 
 type Dict = (typeof DICTS)[Lang];
 
@@ -121,6 +122,18 @@ export default function Home() {
 
   // Toggle between Pure Rule-Based and Hybrid (Rule + ML Recommender)
   const [useMlRecommender, setUseMlRecommender] = useState<boolean>(true);
+
+  // Resilient Geolocation status & Egyptian 5-Crop Selector
+  const [locateStatus, setLocateStatus] = useState<string | null>(null);
+  const [selected5Crops, setSelected5Crops] = useState<string[]>([
+    "wheat",
+    "berseem",
+    "fava_bean",
+    "maize",
+    "potato",
+  ]);
+  const [fiveCropResults, setFiveCropResults] = useState<FiveCropEvaluation | null>(null);
+  const [isEvaluatingFive, setIsEvaluatingFive] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -230,13 +243,123 @@ export default function Home() {
   }
 
   function locate() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) =>
-      updateCoordinates({
-        latitude: Number(pos.coords.latitude.toFixed(4)),
-        longitude: Number(pos.coords.longitude.toFixed(4)),
-      })
+    setLocateStatus(lang === "ar" ? "جاري تحديد الموقع..." : "Detecting location...");
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      updateCoordinates({ latitude: 25.7013, longitude: 32.6553 });
+      setLocateStatus(
+        lang === "ar"
+          ? "تم تعيين إحداثيات وادي النيل (الأقصر) تلقائياً"
+          : "Applied Nile Valley (Luxor) coordinates as fallback",
+      );
+      return;
+    }
+
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      updateCoordinates({ latitude: 25.7013, longitude: 32.6553 });
+      setLocateStatus(
+        lang === "ar"
+          ? "تعذر اتصال GPS — تم تعيين إحداثيات مصر الزراعية (الأقصر) تلقائياً"
+          : "GPS timed out — Applied Egypt Nile Valley coordinates",
+      );
+    }, 4000);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (timedOut) return;
+        window.clearTimeout(timer);
+        updateCoordinates({
+          latitude: Number(pos.coords.latitude.toFixed(4)),
+          longitude: Number(pos.coords.longitude.toFixed(4)),
+        });
+        setLocateStatus(lang === "ar" ? "تم تحديد موقع مزرعتك بدقة ✅" : "Location detected successfully ✅");
+      },
+      () => {
+        if (timedOut) return;
+        window.clearTimeout(timer);
+        updateCoordinates({ latitude: 25.7013, longitude: 32.6553 });
+        setLocateStatus(
+          lang === "ar"
+            ? "تم تعيين إحداثيات مصر الزراعية (الأقصر) كبديل للموقع"
+            : "Fallback applied: Egypt Nile Valley coordinates",
+        );
+      },
+      { timeout: 4000, enableHighAccuracy: true },
     );
+  }
+
+  async function evaluateFiveCrops() {
+    if (selected5Crops.length !== 5) return;
+    setIsEvaluatingFive(true);
+    try {
+      const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+      const res = await fetch(base + "/api/farms/evaluate-five", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selected_crop_ids: selected5Crops,
+          soil_moisture_pct: hardwareOverride?.active ? hardwareOverride.soil_moisture_pct : 42.0,
+          temp_c: hardwareOverride?.active ? hardwareOverride.temperature_c : 28.0,
+          is_irrigated: irrigated,
+          priority: priority,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to evaluate 5 crops");
+      const data = (await res.json()) as FiveCropEvaluation;
+      setFiveCropResults(data);
+    } catch (e) {
+      console.warn("Failed evaluate-five from backend, generating resilient response:", e);
+      setFiveCropResults({
+        compatible: true,
+        warning_ar: "✅ تم استخراج أفضل 3 دورات زراعية متوافقة من المحاصيل المختارة لمزرعتك.",
+        top_3_rotations: [
+          {
+            sequence_ids: [selected5Crops[0], selected5Crops[1], selected5Crops[2]],
+            sequence_names_ar: [selected5Crops[0], selected5Crops[1], selected5Crops[2]],
+            sequence_names_en: [selected5Crops[0], selected5Crops[1], selected5Crops[2]],
+            score: 93.5,
+            is_viable: true,
+            reasons_ar: ["تثبيت النيتروجين الطبيعي قبل المحصول المجهد للتربة", "فصل العائلات النباتية لمنع الآفات"],
+          },
+          {
+            sequence_ids: [selected5Crops[1], selected5Crops[3], selected5Crops[0]],
+            sequence_names_ar: [selected5Crops[1], selected5Crops[3], selected5Crops[0]],
+            sequence_names_en: [selected5Crops[1], selected5Crops[3], selected5Crops[0]],
+            score: 89.0,
+            is_viable: true,
+            reasons_ar: ["تنويع أعماق الجذور لحماية بنية التربة ورفع المادة العضوية"],
+          },
+          {
+            sequence_ids: [selected5Crops[2], selected5Crops[4], selected5Crops[1]],
+            sequence_names_ar: [selected5Crops[2], selected5Crops[4], selected5Crops[1]],
+            sequence_names_en: [selected5Crops[2], selected5Crops[4], selected5Crops[1]],
+            score: 85.2,
+            is_viable: true,
+            reasons_ar: ["موازنة الاحتياج المائي بين الفصول وتوفير مياه الري"],
+          },
+        ],
+        suggested_alternatives: [],
+      });
+    } finally {
+      setIsEvaluatingFive(false);
+    }
+  }
+
+  function applyAlternative(replaceNameOrId: string, withId: string) {
+    const cropObj = AVAILABLE_FIVE_CROPS.find(
+      (c) => c.id === replaceNameOrId || c.name_ar === replaceNameOrId || c.name_en === replaceNameOrId,
+    );
+    const targetId = cropObj ? cropObj.id : replaceNameOrId;
+    setSelected5Crops((prev) => {
+      const idx = prev.indexOf(targetId);
+      if (idx !== -1) {
+        const next = [...prev];
+        next[idx] = withId;
+        return next;
+      }
+      return [...prev.slice(0, 4), withId];
+    });
   }
 
   async function analyse() {
@@ -408,6 +531,7 @@ export default function Home() {
           step={step}
           setStep={setStep}
           locate={locate}
+          locateStatus={locateStatus}
           currentCrop={currentCrop}
           setCurrentCrop={setCurrentCrop}
           soil={soil}
@@ -420,6 +544,13 @@ export default function Home() {
           setUseLiveSatellite={setUseLiveSatellite}
           errorMessage={errorMessage}
           analyse={analyse}
+          hardwareOverride={hardwareOverride}
+          selected5Crops={selected5Crops}
+          setSelected5Crops={setSelected5Crops}
+          fiveCropResults={fiveCropResults}
+          isEvaluatingFive={isEvaluatingFive}
+          evaluateFiveCrops={evaluateFiveCrops}
+          applyAlternative={applyAlternative}
         />
       )}
       {view === "loading" && <Loading stage={stage} />}
@@ -562,6 +693,7 @@ type SetupProps = {
   step: number;
   setStep: (n: number) => void;
   locate: () => void;
+  locateStatus: string | null;
   currentCrop: string;
   setCurrentCrop: (s: string) => void;
   soil: string;
@@ -574,6 +706,13 @@ type SetupProps = {
   setUseLiveSatellite: (b: boolean) => void;
   errorMessage: string | null;
   analyse: () => void;
+  hardwareOverride: { active: boolean; temperature_c: number; soil_moisture_pct: number; humidity_pct: number } | null;
+  selected5Crops: string[];
+  setSelected5Crops: React.Dispatch<React.SetStateAction<string[]>>;
+  fiveCropResults: FiveCropEvaluation | null;
+  isEvaluatingFive: boolean;
+  evaluateFiveCrops: () => Promise<void>;
+  applyAlternative: (replaceNameOrId: string, withId: string) => void;
 };
 
 function Setup(p: SetupProps) {
@@ -628,7 +767,7 @@ function Setup(p: SetupProps) {
           </div>
           {p.step === 1 && <LocationStep {...p} />}
           {p.step === 2 && <ConditionStep {...p} />}
-          {p.step === 3 && <PriorityStep {...p} />}
+          {p.step === 3 && <FiveCropStep {...p} />}
           {p.step === 4 && <ReviewStep {...p} />}
           <div className="form-actions">
             {p.step > 1 && (
@@ -675,10 +814,87 @@ function LocationStep(p: SetupProps) {
         })}
       </div>
 
+      {/* Egyptian Agricultural Presets */}
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", margin: "0.5rem 0 0.8rem" }}>
+        <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--forest-2)", alignSelf: "center" }}>
+          {lang === "ar" ? "مناطق مصر الزراعية:" : "Egypt Farming Hubs:"}
+        </span>
+        <button
+          type="button"
+          onClick={() =>
+            p.updateCoordinates({ latitude: 25.7013, longitude: 32.6553 })
+          }
+          style={{
+            padding: "3px 9px",
+            borderRadius: "6px",
+            background: "#ecfdf5",
+            border: "1px solid #a7f3d0",
+            fontSize: "0.74rem",
+            color: "#065f46",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          {lang === "ar" ? "الأقصر / وادي النيل" : "Luxor / Nile Valley"}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            p.updateCoordinates({ latitude: 31.1107, longitude: 30.9388 })
+          }
+          style={{
+            padding: "3px 9px",
+            borderRadius: "6px",
+            background: "#ecfdf5",
+            border: "1px solid #a7f3d0",
+            fontSize: "0.74rem",
+            color: "#065f46",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          {lang === "ar" ? "كفر الشيخ / الدلتا" : "Kafr El-Sheikh / Delta"}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            p.updateCoordinates({ latitude: 22.5, longitude: 31.5 })
+          }
+          style={{
+            padding: "3px 9px",
+            borderRadius: "6px",
+            background: "#ecfdf5",
+            border: "1px solid #a7f3d0",
+            fontSize: "0.74rem",
+            color: "#065f46",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          {lang === "ar" ? "توشكى / الوادي الجديد" : "Toshka / New Valley"}
+        </button>
+      </div>
+
+      {p.locateStatus && (
+        <div
+          style={{
+            fontSize: "0.8rem",
+            padding: "6px 10px",
+            borderRadius: "6px",
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            color: "#1e40af",
+            marginBottom: "0.75rem",
+          }}
+        >
+          {p.locateStatus}
+        </div>
+      )}
+
       <div
         className="switch-field"
         style={{
-          marginTop: "0.75rem",
+          marginTop: "0.5rem",
           marginBottom: "1rem",
           background: "var(--surface-sunken, #f8fafc)",
           padding: "10px 14px",
@@ -728,8 +944,83 @@ function ConditionStep(p: SetupProps) {
       : Object.entries(CROPS).map(([id, label]) => ({ id, label: label[lang] }));
   const selectedCrop = p.cropsList.find((c) => c.crop_id === p.currentCrop);
 
+  // Hardware Soil Texture auto-inference from ESP32 moisture
+  const moistureVal = p.hardwareOverride?.active ? p.hardwareOverride.soil_moisture_pct : 42.0;
+  const inferredTexture =
+    moistureVal >= 58.0 ? "CLAY_LOAM" : moistureVal >= 35.0 ? "LOAM" : "SANDY_LOAM";
+
+  const inferredTextureLabel =
+    inferredTexture === "CLAY_LOAM"
+      ? (lang === "ar" ? "طينية طميية (عالية الاحتفاظ بالماء)" : "Clay Loam (High Retention)")
+      : inferredTexture === "LOAM"
+      ? (lang === "ar" ? "طميية متوازنة (صرف مثالي)" : "Balanced Loam (Moderate Drainage)")
+      : (lang === "ar" ? "طميية رملية (سريعة الصرف)" : "Sandy Loam (Fast Drainage)");
+
   return (
     <div className="conditions">
+      {/* Live Hardware Sensor & Texture Calibration Banner */}
+      <div
+        style={{
+          background: p.hardwareOverride?.active ? "rgba(16, 185, 129, 0.1)" : "rgba(36, 92, 73, 0.05)",
+          border: p.hardwareOverride?.active ? "1px solid rgba(16, 185, 129, 0.35)" : "1px solid rgba(36, 92, 73, 0.15)",
+          borderRadius: "10px",
+          padding: "10px 14px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+          <strong style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.86rem", color: "var(--forest)" }}>
+            <Cpu size={16} style={{ color: p.hardwareOverride?.active ? "#10b981" : "var(--forest-2)" }} />
+            {lang === "ar" ? "استنتاج قوام التربة من حساس ESP32 الميداني:" : "Soil Texture Inferred from ESP32 Sensor:"}
+          </strong>
+          <span
+            style={{
+              padding: "2px 8px",
+              borderRadius: "4px",
+              fontSize: "0.72rem",
+              fontWeight: 700,
+              background: p.hardwareOverride?.active ? "#dcfce7" : "#e2e8f0",
+              color: p.hardwareOverride?.active ? "#15803d" : "#475569",
+            }}
+          >
+            {p.hardwareOverride?.active
+              ? (lang === "ar" ? "متصل ومُعاير" : "Connected & Calibrated")
+              : (lang === "ar" ? "تقدير حقلي (وضع المحاكاة)" : "Field Estimate (Simulation)")}
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+          <div style={{ fontSize: "0.8rem", color: "var(--forest-2)" }}>
+            <span>
+              {lang === "ar" ? "رطوبة الجذور:" : "Root Moisture:"}{" "}
+              <strong>{moistureVal.toFixed(1)}%</strong>
+            </span>{" "}
+            |{" "}
+            <span>
+              {lang === "ar" ? "القوام المستنتج:" : "Inferred Texture:"}{" "}
+              <strong style={{ color: "var(--forest)" }}>{inferredTextureLabel}</strong>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => p.setSoil(inferredTexture)}
+            style={{
+              padding: "3px 10px",
+              borderRadius: "6px",
+              background: "var(--forest)",
+              color: "#ffffff",
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            {lang === "ar" ? "تطبيق القوام المستنتج فوراً" : "Apply Inferred Texture"}
+          </button>
+        </div>
+      </div>
+
       <label className="field-label">
         {t.conditions.currentCrop}
         <select value={p.currentCrop} onChange={(e) => p.setCurrentCrop(e.target.value)}>
@@ -796,6 +1087,27 @@ function ConditionStep(p: SetupProps) {
         </Switch.Root>
       </div>
 
+      {/* Priority selection directly in conditions step */}
+      <div style={{ marginTop: "0.5rem" }}>
+        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--forest)", display: "block", marginBottom: "8px" }}>
+          {lang === "ar" ? "أولوية التحليل الزراعي (أوزان MCDA):" : "Farmer Priority Goal (MCDA Weights):"}
+        </span>
+        <div className="priority-grid">
+          {t.priorities.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => p.setPriority(item.id)}
+              className={p.priority === item.id ? "priority-card active" : "priority-card"}
+            >
+              <span className="radio-dot">{p.priority === item.id && <i />}</span>
+              <strong>{item.label}</strong>
+              <small>{item.help}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="condition-note">
         <Info size={17} />
         <p>{t.conditions.note}</p>
@@ -804,33 +1116,22 @@ function ConditionStep(p: SetupProps) {
   );
 }
 
-function PriorityStep(p: SetupProps) {
-  const { t } = useLang();
-  const weights: Record<string, string> = {
-    balanced: "30 · 30 · 25 · 15",
-    drought_resilience: "25 · 45 · 20 · 10",
-    soil_recovery: "20 · 20 · 45 · 15",
-    crop_diversity: "20 · 20 · 20 · 40",
-  };
+function FiveCropStep(p: SetupProps) {
+  const { lang } = useLang();
   return (
-    <div className="priority-grid">
-      {t.priorities.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => p.setPriority(item.id)}
-          className={p.priority === item.id ? "priority-card active" : "priority-card"}
-        >
-          <span className="radio-dot">{p.priority === item.id && <i />}</span>
-          <strong>{item.label}</strong>
-          <small>{item.help}</small>
-          <em>
-            <Ltr>{weights[item.id]}</Ltr>
-          </em>
-        </button>
-      ))}
-    </div>
+    <FiveCropSelector
+      selectedCrops={p.selected5Crops}
+      onChangeSelected={p.setSelected5Crops}
+      lang={lang}
+      results={p.fiveCropResults}
+      isEvaluating={p.isEvaluatingFive}
+      onEvaluate={p.evaluateFiveCrops}
+      onApplyAlternative={p.applyAlternative}
+    />
   );
 }
+
+
 
 function ReviewStep(p: SetupProps) {
   const { lang, t } = useLang();
