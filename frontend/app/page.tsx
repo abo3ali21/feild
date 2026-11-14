@@ -14,6 +14,7 @@ import {
   Globe,
   Info,
   Leaf,
+  LocateFixed,
   Orbit,
   Radio,
   RefreshCw,
@@ -52,7 +53,8 @@ import { CropCalendar } from "@/components/CropCalendar";
 import { FactorBreakdown } from "@/components/FactorBreakdown";
 import { DataProvenance } from "@/components/DataProvenance";
 import { FiveCropSelector, FiveCropEvaluation, AVAILABLE_FIVE_CROPS } from "@/components/FiveCropSelector";
-import { AmbientBackground, MouseSpotlight, StepTransition, TiltCard } from "@/components/MotionPrimitives";
+import { MouseSpotlight, StepTransition, TiltCard } from "@/components/MotionPrimitives";
+import { OrbitalBackground } from "@/components/OrbitalBackground";
 
 type Dict = (typeof DICTS)[Lang];
 
@@ -183,36 +185,8 @@ export default function Home() {
           }
         }
         if (profilesRes && profilesRes.ok) {
-          const pData = (await profilesRes.json()) as {
-            profiles?: {
-              id: string;
-              name: string;
-              latitude: number;
-              longitude: number;
-              current_crop_id: string;
-              soil_texture: string;
-              is_irrigated: boolean;
-              farmer_priority: string;
-            }[];
-          };
-          if (pData.profiles && pData.profiles.length > 0) {
-            const mapped: Demo[] = pData.profiles.map((p) => {
-              const nameParts = p.name.split(",");
-              return {
-                id: p.id,
-                name: nameParts[0]?.trim() || p.name,
-                country: nameParts[1]?.trim() || "",
-                system: p.is_irrigated ? "Irrigated" : "Rainfed",
-                latitude: p.latitude,
-                longitude: p.longitude,
-                currentCrop: p.current_crop_id,
-                soil: p.soil_texture,
-                irrigated: p.is_irrigated,
-                priority: p.farmer_priority,
-              };
-            });
-            setDemoList(mapped);
-          }
+          // Strictly keep Egyptian farming hubs (Luxor, Kafr El-Sheikh, Toshka)
+          setDemoList(DEMOS);
         }
       } catch {
         if (active) setApiOnline(false);
@@ -480,7 +454,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen relative">
-      <AmbientBackground />
+      <OrbitalBackground />
       <MouseSpotlight />
       <Header
         onMethod={() => setMethodOpen(true)}
@@ -795,6 +769,20 @@ function LocationStep(p: SetupProps) {
         </Link>
       </div>
 
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+        <label className="text-xs sm:text-sm font-semibold text-[#143626]">
+          {lang === "ar" ? "اختر منطقة زراعية مصرية أو حدد موقع مزرعتك:" : "Select an Egyptian farming hub or use your live GPS:"}
+        </label>
+        <button
+          type="button"
+          onClick={p.locate}
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#143626] bg-[#143626] text-[#F7F5EE] text-xs font-semibold hover:bg-[#1f4e38] transition cursor-pointer shadow-xs"
+        >
+          <LocateFixed size={14} />
+          {lang === "ar" ? "تحديد موقعي الحالي (Use My Location)" : "Use My Location"}
+        </button>
+      </div>
+
       <div className="demo-chips" role="radiogroup" aria-label={t.location.farmsAria}>
         {p.demoList.map((item) => {
           const display = demoDisplay(item, lang, t);
@@ -812,67 +800,6 @@ function LocationStep(p: SetupProps) {
             </button>
           );
         })}
-      </div>
-
-      {/* Egyptian Agricultural Presets */}
-      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", margin: "0.5rem 0 0.8rem" }}>
-        <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--forest-2)", alignSelf: "center" }}>
-          {lang === "ar" ? "مناطق مصر الزراعية:" : "Egypt Farming Hubs:"}
-        </span>
-        <button
-          type="button"
-          onClick={() =>
-            p.updateCoordinates({ latitude: 25.7013, longitude: 32.6553 })
-          }
-          style={{
-            padding: "3px 9px",
-            borderRadius: "6px",
-            background: "#ecfdf5",
-            border: "1px solid #a7f3d0",
-            fontSize: "0.74rem",
-            color: "#065f46",
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          {lang === "ar" ? "الأقصر / وادي النيل" : "Luxor / Nile Valley"}
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            p.updateCoordinates({ latitude: 31.1107, longitude: 30.9388 })
-          }
-          style={{
-            padding: "3px 9px",
-            borderRadius: "6px",
-            background: "#ecfdf5",
-            border: "1px solid #a7f3d0",
-            fontSize: "0.74rem",
-            color: "#065f46",
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          {lang === "ar" ? "كفر الشيخ / الدلتا" : "Kafr El-Sheikh / Delta"}
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            p.updateCoordinates({ latitude: 22.5, longitude: 31.5 })
-          }
-          style={{
-            padding: "3px 9px",
-            borderRadius: "6px",
-            background: "#ecfdf5",
-            border: "1px solid #a7f3d0",
-            fontSize: "0.74rem",
-            color: "#065f46",
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          {lang === "ar" ? "توشكى / الوادي الجديد" : "Toshka / New Valley"}
-        </button>
       </div>
 
       {p.locateStatus && (

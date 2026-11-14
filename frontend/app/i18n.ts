@@ -100,12 +100,9 @@ export function translateFactor(text: string, lang: Lang): string {
 }
 
 export const DEMO_LABELS: Record<string, { name: string; country: string; system: string }> = {
-  luxor: { name: "وادي النيل / الأقصر", country: "مصر", system: "مروي" },
-  sahel: { name: "الساحل شبه القاحل", country: "السنغال", system: "بعل" },
-  iowa: { name: "حزام الذرة في آيوا", country: "الولايات المتحدة", system: "بعل" },
-  punjab: { name: "بنجاب / حوض السند", country: "باكستان", system: "مروي" },
-  andes: { name: "مزرعة صغيرة في جبال الأنديز", country: "بيرو", system: "بعل" },
-  western_australia: { name: "حزام القمح الغربي", country: "أستراليا", system: "بعل" },
+  luxor: { name: "الأقصر / وادي النيل", country: "مصر", system: "مروي" },
+  kafr_el_sheikh: { name: "كفر الشيخ / الدلتا", country: "مصر", system: "مروي" },
+  toshka: { name: "توشكى / أسوان", country: "مصر", system: "مروي" },
 };
 
 export const en = {

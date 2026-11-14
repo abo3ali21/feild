@@ -44,20 +44,16 @@ export const FARMER_PRIORITIES: Record<
 };
 
 export const DEMOS:Demo[]=[
-  {id:"luxor",name:"Nile Valley / Luxor",country:"Egypt",system:"Irrigated",latitude:25.7013,longitude:32.6553,currentCrop:"wheat",soil:"SANDY_LOAM",irrigated:true,priority:"water"},
-  {id:"sahel",name:"Semi-Arid Sahel",country:"Senegal",system:"Rainfed",latitude:14.1203,longitude:-16.0351,currentCrop:"groundnut",soil:"SANDY_LOAM",irrigated:false,priority:"water"},
-  {id:"iowa",name:"Iowa Corn Belt",country:"USA",system:"Rainfed",latitude:42.0308,longitude:-93.6319,currentCrop:"maize",soil:"LOAM",irrigated:false,priority:"soil"},
-  {id:"punjab",name:"Punjab / Indus Basin",country:"Pakistan",system:"Irrigated",latitude:30.1575,longitude:71.5249,currentCrop:"cotton",soil:"CLAY_LOAM",irrigated:true,priority:"water"},
-  {id:"andes",name:"Andean smallholder",country:"Peru",system:"Rainfed",latitude:-13.5319,longitude:-71.9675,currentCrop:"potato",soil:"LOAM",irrigated:false,priority:"soil"},
-  {id:"western_australia",name:"Western Wheat Belt",country:"Australia",system:"Rainfed",latitude:-31.48,longitude:117.16,currentCrop:"barley",soil:"SANDY_LOAM",irrigated:false,priority:"profit"},
+  {id:"luxor",name:"Nile Valley / Luxor",country:"Egypt",system:"Irrigated",latitude:25.6872,longitude:32.6396,currentCrop:"wheat",soil:"SANDY_LOAM",irrigated:true,priority:"water"},
+  {id:"kafr_el_sheikh",name:"Kafr El-Sheikh / Nile Delta",country:"Egypt",system:"Irrigated",latitude:31.1107,longitude:30.9388,currentCrop:"wheat",soil:"CLAY_LOAM",irrigated:true,priority:"water"},
+  {id:"toshka",name:"Toshka / Aswan",country:"Egypt",system:"Irrigated",latitude:22.5930,longitude:31.5390,currentCrop:"wheat",soil:"SANDY_LOAM",irrigated:true,priority:"water"},
 ];
 const profiles:Record<string,{rain:number;historic:number;heat:number;gdd:number;ph:number;om:number;sequences:string[][]}>={
   luxor:{rain:10,historic:25,heat:45,gdd:3500,ph:7.8,om:1.0,sequences:[["wheat","berseem","maize"],["fava_bean","maize","wheat"],["berseem","sorghum","wheat"]]},
+  kafr_el_sheikh:{rain:65,historic:85,heat:18,gdd:2600,ph:7.9,om:1.6,sequences:[["wheat","berseem","maize"],["fava_bean","maize","wheat"],["berseem","cotton","wheat"]]},
+  toshka:{rain:2,historic:6,heat:58,gdd:3900,ph:7.6,om:0.7,sequences:[["wheat","berseem","sorghum"],["fava_bean","sorghum","wheat"],["berseem","groundnut","wheat"]]},
+  // Fallbacks for compatibility
   sahel:{rain:410,historic:570,heat:22,gdd:1710,ph:6.1,om:1.1,sequences:[["pearl_millet","cowpea","sunflower"],["sorghum","sweet_potato","cowpea"],["cowpea","pearl_millet","sunflower"]]},
-  iowa:{rain:610,historic:640,heat:7,gdd:1320,ph:6.5,om:2.8,sequences:[["soybean","sunflower","barley"],["cowpea","maize","canola"],["canola","soybean","sorghum"]]},
-  punjab:{rain:285,historic:370,heat:31,gdd:1980,ph:7.8,om:.9,sequences:[["pearl_millet","cowpea","sunflower"],["sorghum","chickpea","canola"],["barley","sunflower","cowpea"]]},
-  andes:{rain:520,historic:590,heat:2,gdd:980,ph:5.8,om:2.1,sequences:[["cowpea","barley","sunflower"],["canola","cowpea","sorghum"],["sunflower","chickpea","barley"]]},
-  western_australia:{rain:330,historic:410,heat:13,gdd:1240,ph:6,om:1.3,sequences:[["chickpea","canola","barley"],["canola","cowpea","sorghum"],["sunflower","chickpea","barley"]]},
 };
 
 export function mockEvaluation(demo:Demo,rainChange=0,tempChange=0,irrigation=demo.irrigated,lang:"en"|"ar"="en",selectedCrops?:string[]):Evaluation{

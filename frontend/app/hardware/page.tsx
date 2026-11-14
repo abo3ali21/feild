@@ -16,7 +16,8 @@ import {
   Wind,
   Zap,
 } from "lucide-react";
-import { AmbientBackground, MouseSpotlight, TiltCard } from "@/components/MotionPrimitives";
+import { MouseSpotlight, TiltCard } from "@/components/MotionPrimitives";
+import { OrbitalBackground } from "@/components/OrbitalBackground";
 
 interface TelemetryData {
   active: boolean;
@@ -163,24 +164,24 @@ export default function HardwareStationPage() {
       dir={isRtl ? "rtl" : "ltr"}
       className="min-h-screen bg-[#F7F5EE] text-[#143626] py-8 px-4 sm:px-6 md:px-8 font-sans relative"
     >
-      <AmbientBackground />
+      <OrbitalBackground />
       <MouseSpotlight />
 
       {/* Top Header */}
       <div className="max-w-5xl mx-auto mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200">
-              <Cpu className="text-emerald-700 w-7 h-7" />
+            <div className="p-2.5 bg-white rounded-xl border border-[#E2DFD5] shadow-xs">
+              <Cpu className="text-[#143626] w-7 h-7" />
             </div>
             <div>
               <h1 className="text-2xl font-bold font-serif text-[#143626] m-0">
-                {isRtl ? "محطة المعايرة الحقلية (ESP32 Ground-Truth Station)" : "ESP32 Ground-Truth Station"}
+                {isRtl ? "حساسات الحقل (ESP32)" : "Field Sensors (ESP32)"}
               </h1>
-              <p className="text-stone-600 text-xs sm:text-sm mt-0.5 m-0">
+              <p className="text-[#5C665E] text-xs sm:text-sm mt-0.5 m-0">
                 {isRtl
-                  ? "معايرة فورية لبيانات الأقمار الصناعية (NASA POWER) بحساسات الحقل الميدانية"
-                  : "Real-time Ground-Truth Calibration against Satellite Observations"}
+                  ? "قراءات التربة والمناخ المباشرة"
+                  : "Live in-situ soil & microclimate telemetry"}
               </p>
             </div>
           </div>
@@ -194,7 +195,7 @@ export default function HardwareStationPage() {
             </button>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-[#D6D2C4] bg-[#143626] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#245c49] transition shadow-xs no-underline"
+              className="inline-flex items-center gap-2 rounded-full border border-[#D6D2C4] bg-white/80 px-4 py-1.5 text-xs font-semibold text-[#143626] hover:bg-[#143626] hover:text-[#F7F5EE] transition shadow-xs no-underline"
             >
               {isRtl ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
               {isRtl ? "العودة للوحة القيادة" : "Back to Planner"}
@@ -414,21 +415,21 @@ export default function HardwareStationPage() {
             <button
               onClick={() => injectScenario("balanced")}
               disabled={loading}
-              className="px-4 py-2 rounded-xl bg-[#E6ECE8] text-[#143626] border border-[#D6D2C4] text-xs font-semibold hover:bg-[#143626] hover:text-[#F7F5EE] transition cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-white text-[#143626] border border-[#E2DFD5] text-xs font-semibold hover:bg-[#143626] hover:text-[#F7F5EE] transition cursor-pointer shadow-xs"
             >
               {isRtl ? "تربة متوازنة (48%)" : "Balanced Field (48%)"}
             </button>
             <button
               onClick={() => injectScenario("drought")}
               disabled={loading}
-              className="px-4 py-2 rounded-xl bg-[#FEF3C7] text-[#B45309] border border-[#B45309]/30 text-xs font-semibold hover:bg-[#B45309] hover:text-white transition cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-white text-[#143626] border border-[#E2DFD5] text-xs font-semibold hover:bg-[#B45309] hover:text-white transition cursor-pointer shadow-xs"
             >
               {isRtl ? "إجهاد جفاف (18%)" : "Drought Stress (18%)"}
             </button>
             <button
               onClick={() => injectScenario("irrigated")}
               disabled={loading}
-              className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold hover:bg-emerald-800 hover:text-white transition cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-white text-[#143626] border border-[#E2DFD5] text-xs font-semibold hover:bg-[#143626] hover:text-[#F7F5EE] transition cursor-pointer shadow-xs"
             >
               {isRtl ? "بعد الري (78%)" : "Post-Irrigation (78%)"}
             </button>
@@ -438,8 +439,8 @@ export default function HardwareStationPage() {
         <div>
           <button
             onClick={applyToPlanner}
-            className={`px-6 py-3 rounded-xl text-white font-semibold text-sm inline-flex items-center gap-2 shadow-xs transition cursor-pointer ${
-              applied ? "bg-emerald-700" : "bg-[#143626] hover:bg-[#245c49]"
+            className={`px-6 py-3 rounded-xl text-[#F7F5EE] font-semibold text-sm inline-flex items-center gap-2 shadow-xs transition cursor-pointer ${
+              applied ? "bg-emerald-700" : "bg-[#143626] hover:bg-[#1b4833]"
             }`}
           >
             {applied ? <CheckCircle2 size={18} /> : <Zap size={18} />}

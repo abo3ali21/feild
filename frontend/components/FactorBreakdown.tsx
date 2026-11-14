@@ -10,6 +10,63 @@ type FactorBreakdownProps = {
   priority: string;
 };
 
+function humanizeRejection(item: Decision, lang: "ar" | "en"): string {
+  const reason = item.reason || "";
+  const rule = item.rule || "";
+
+  // 1. Soil pH
+  if (rule === "SOIL_PH") {
+    const phMatch = reason.match(/pH\s*([\d.]+)/i);
+    const phVal = phMatch ? phMatch[1] : "7.8";
+    if (reason.toLowerCase().includes("potato")) {
+      return lang === "ar"
+        ? `البطاطس غير مناسبة لأن قلوية التربة (pH ${phVal}) أعلى من الحد المثالي لها.`
+        : `Potato is unsuitable because soil alkalinity (pH ${phVal}) exceeds its optimal range.`;
+    }
+    return lang === "ar"
+      ? `بعض المحاصيل غير مناسبة لأن قلوية التربة (pH ${phVal}) أعلى من الحد المثالي لها.`
+      : `Some crops were excluded because soil alkalinity (pH ${phVal}) exceeds their optimal range.`;
+  }
+
+  // 2. Extreme Heat
+  if (rule === "EXTREME_HEAT") {
+    return lang === "ar"
+      ? "تم استبعاد المحاصيل الحساسة للحرارة العالية لحماية إنتاجيتك في هذا المناخ."
+      : "Heat-sensitive crops were filtered out to protect your seasonal yield in this climate.";
+  }
+
+  // 3. Critical Water
+  if (rule === "CRITICAL_WATER") {
+    return lang === "ar"
+      ? "تم استبعاد المحاصيل ذات الاحتياج المائي المرتفع لتفادي إجهاد التربة وشح المياه."
+      : "High-water demand crops were excluded to safeguard your water budget.";
+  }
+
+  // 4. Irrigation Required
+  if (rule === "IRRIGATION_REQUIRED") {
+    return lang === "ar"
+      ? "تم استبعاد المحاصيل التي تتطلب رياً مستمراً نظراً لعدم توفر مصدر ري كافٍ."
+      : "Crops requiring intensive irrigation were excluded under current water supply.";
+  }
+
+  // 5. Minimum GDD
+  if (rule === "MINIMUM_GDD") {
+    return lang === "ar"
+      ? "تم استبعاد المحاصيل التي تتطلب وحدات حرارية تراكمية أطول من موسم الزراعة المتاح."
+      : "Crops needing longer thermal heat accumulation than available this season were filtered out.";
+  }
+
+  // 6. Family Break
+  if (rule === "FAMILY_BREAK") {
+    return lang === "ar"
+      ? "تم استبعاد تكرار المحاصيل من نفس الفصيلة لمنع انتشار الآفات واستنزاف العناصر الغذائية."
+      : "Crops from the same botanical family were separated to prevent pest build-up.";
+  }
+
+  // Fallback without bracketed technical tags
+  return reason.replace(/^\[[A-Z_]+\]:?\s*/i, "");
+}
+
 export function FactorBreakdown({
   rejectedExamples = [],
   priority,
@@ -27,21 +84,28 @@ export function FactorBreakdown({
   };
 
   const activeWeight = weights[priority] ?? weights.balanced;
+  const dimensionKeys = ["climate", "water", "soil", "diversity"] as const;
 
   return (
-    <div className="factor-breakdown-section" style={{ marginTop: "1.5rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h3 style={{ fontSize: "1.05rem", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+    <div className="factor-breakdown" style={{ margin: "1.5rem 0" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+        <h3 style={{ fontSize: "1.05rem", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: "6px", color: "#143626" }}>
           <Scale size={18} />
           {lang === "ar" ? "أوزان التقييم متعدد المعايير (MCDA) والمفاضلة" : "MCDA Weighting & Trade-off Analysis"}
         </h3>
         <span style={{ fontSize: "0.8rem", color: "var(--foreground-muted, #64748b)" }}>
-          {lang === "ar" ? "المجموع = 100%" : "Weights sum to 100%"}
+          {lang === "ar" ? "أوزان الأولوية المحددة" : "Active Profile Weights"}
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "10px", marginBottom: "1.5rem" }}>
-        {(["climate", "water", "soil", "diversity"] as const).map((key) => (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+          gap: "0.75rem",
+        }}
+      >
+        {dimensionKeys.map((key) => (
           <div
             key={key}
             style={{
@@ -63,41 +127,19 @@ export function FactorBreakdown({
       </div>
 
       {rejectedExamples.length > 0 && (
-        <div className="rejected-crops-card" style={{ padding: "1rem", borderRadius: "10px", background: "rgba(220, 38, 38, 0.04)", border: "1px solid rgba(220, 38, 38, 0.2)", marginTop: "1rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "0.5rem", color: "#b91c1c" }}>
-            <AlertCircle size={18} />
-            <strong style={{ fontSize: "0.95rem" }}>
-              {lang === "ar" ? "محاصيل استُبعدت زراعياً (شروط الفلترة الصارمة)" : "Rejected Crops & Agronomic Constraint Screening"}
+        <div className="bg-[#FEF3C7]/60 border border-[#D97706]/30 text-[#143626] rounded-2xl p-4 mt-4 shadow-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle size={18} className="text-[#D97706] shrink-0" />
+            <strong className="text-sm font-semibold text-[#143626]">
+              {lang === "ar" ? "محاصيل تم استبعادها لعدم ملاءمتها لأرضك" : "Crops Filtered Out for Your Farm"}
             </strong>
           </div>
-          <p style={{ fontSize: "0.8rem", color: "var(--foreground-muted, #64748b)", margin: "0 0 0.5rem 0" }}>
-            {lang === "ar"
-              ? "استُبعدت هذه المحاصيل تلقائياً لعدم ملاءمتها للمناخ أو قلوية التربة أو نقص المياه لتفادي مخاطر فشل المحصول:"
-              : "The following crops failed hard environmental thresholds (e.g. soil pH alkalinity, heat ceiling, or water deficit) to prevent crop failure risk:"}
-          </p>
-          <ul style={{ margin: 0, paddingInlineStart: "1.2rem", fontSize: "0.85rem", color: "#7f1d1d" }}>
-            {rejectedExamples.map((item, idx) => {
-              const ruleNameAr =
-                item.rule === "SOIL_PH"
-                  ? "حموضة وقلوية التربة"
-                  : item.rule === "EXTREME_HEAT"
-                  ? "الإجهاد الحراري الشديد"
-                  : item.rule === "CRITICAL_WATER"
-                  ? "العجز المائي الحرج"
-                  : item.rule === "MINIMUM_GDD"
-                  ? "الحرارة التراكمية"
-                  : item.rule === "FAMILY_BREAK"
-                  ? "فصل العائلات النباتية"
-                  : item.rule === "IRRIGATION_REQUIRED"
-                  ? "احتياج ري إجباري"
-                  : item.rule;
-
-              return (
-                <li key={idx} style={{ marginBottom: "4px" }}>
-                  <strong>[{lang === "ar" ? ruleNameAr : item.rule}]:</strong> {item.reason}
-                </li>
-              );
-            })}
+          <ul className="m-0 ps-5 text-xs text-[#5C665E] space-y-1.5 list-disc">
+            {rejectedExamples.map((item, idx) => (
+              <li key={idx} className="leading-relaxed">
+                {humanizeRejection(item, lang)}
+              </li>
+            ))}
           </ul>
         </div>
       )}

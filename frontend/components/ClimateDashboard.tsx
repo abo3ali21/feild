@@ -11,8 +11,6 @@ type ClimateDashboardProps = {
 
 export function ClimateDashboard({ context }: ClimateDashboardProps) {
   const { lang, t, num } = useLang();
-  const f = (v: number, digits?: number) =>
-    lang === "ar" ? num(v, digits) : digits === undefined ? String(v) : v.toFixed(digits);
 
   const signed = (v: number) => {
     const formatted = v.toFixed(1);
@@ -70,7 +68,7 @@ export function ClimateDashboard({ context }: ClimateDashboardProps) {
           <div>
             <small>{t.results.metrics.rainfall}</small>
             <strong>
-              <Ltr>{f(context.seasonal_rainfall_mm)}</Ltr> {t.results.metrics.mm}
+              <Ltr>{Number(context.seasonal_rainfall_mm ?? 0).toFixed(1)}</Ltr> {t.results.metrics.mm}
             </strong>
             <p>
               {humanRain(context.precipitation_anomaly_pct)}{" "}
@@ -92,7 +90,7 @@ export function ClimateDashboard({ context }: ClimateDashboardProps) {
           <div>
             <small>{t.results.metrics.heatStress}</small>
             <strong>
-              {f(context.heat_stress_days)} {t.results.metrics.heatUnit}
+              {Math.round(context.heat_stress_days ?? 0)} {t.results.metrics.heatUnit}
             </strong>
             <p>{heatNote}</p>
           </div>
@@ -103,7 +101,7 @@ export function ClimateDashboard({ context }: ClimateDashboardProps) {
           <div>
             <small>{t.results.metrics.seasonalHeat}</small>
             <strong>
-              {f(context.annual_gdd)} {t.results.metrics.gddUnit}
+              {Math.round(context.annual_gdd ?? 0).toLocaleString()} {t.results.metrics.gddUnit}
             </strong>
             <p>{t.results.metrics.gddNote}</p>
           </div>
@@ -115,9 +113,10 @@ export function ClimateDashboard({ context }: ClimateDashboardProps) {
             <small>{lang === "ar" ? "المياه الفعالة المتاحة" : "Effective Water Available"}</small>
             <strong>
               <Ltr>
-                {context.effective_water_mm
-                  ? f(context.effective_water_mm)
-                  : f(context.seasonal_rainfall_mm * 0.8)}
+                {Math.round(
+                  context.effective_water_mm ??
+                    (context.seasonal_rainfall_mm ? context.seasonal_rainfall_mm * 0.8 : 0)
+                )}
               </Ltr>{" "}
               {t.results.metrics.mm}
             </strong>
