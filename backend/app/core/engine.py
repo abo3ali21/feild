@@ -54,7 +54,10 @@ def suitability(crop: Crop, context: EnvironmentalContext, irrigated: bool) -> l
         rule="IRRIGATION_REQUIRED",
         reason=f"{crop.common_name} {'can be screened as rainfed' if irrigation_ok else 'is treated as irrigation-dependent under these conditions'}.",
     ))
-    extreme_heat_limit = 48 if crop.drought_tolerance > .7 else 30
+    if irrigated:
+        extreme_heat_limit = 180 if crop.drought_tolerance > .7 else 60
+    else:
+        extreme_heat_limit = 48 if crop.drought_tolerance > .7 else 30
     heat_ok = context.heat_stress_days <= extreme_heat_limit
     checks.append(Decision(
         passed=heat_ok,

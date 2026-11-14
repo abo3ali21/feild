@@ -556,8 +556,8 @@ function ReviewStep(p:SetupProps){
 
   const tipText = p.irrigated
     ? (lang === "ar"
-        ? "ملاحظة: الري مفعّل بالفعل (محسوب في التحليل)، ولكن المحصول المختار (مثل البطاطس) غير متوافق زراعياً مع ظروف المنطقة بسبب قلوية التربة (pH المرتفع) أو شدة الإجهاد الحراري. جرّب اختيار محصول أكثر تحملاً للحرارة والقلوية مثل اللوبيا أو الذرة الرفيعة أو الدخن."
-        : "Note: Irrigation is already enabled and factored into the analysis. However, the selected starting crop exceeds local hard constraints (e.g. high soil pH alkalinity or extreme heat days). Try selecting a more heat/alkali-tolerant crop like Cowpea, Pearl Millet, or Sorghum.")
+        ? `ملاحظة: الري مفعّل بالفعل (محسوب في التحليل)، ولكن المحصول المختار (${crop}) غير متوافق زراعياً مع ظروف المنطقة بسبب قلوية التربة (pH المرتفع) أو شدة الإجهاد الحراري. جرّب اختيار محصول أكثر تحملاً للحرارة والقلوية مثل اللوبيا أو الذرة الرفيعة أو الدخن.`
+        : `Note: Irrigation is already enabled and factored into the analysis. However, the selected starting crop (${crop}) exceeds local hard constraints (e.g. high soil pH alkalinity or extreme heat days). Try selecting a more heat/alkali-tolerant crop like Cowpea, Pearl Millet, or Sorghum.`)
     : (lang === "ar"
         ? "نصيحة: جرّب تفعيل الري التكميلي في الخطوة 2، أو اختر محصولاً أكثر تحملاً للجفاف والحرارة."
         : "Tip: Try toggling 'Irrigation available' ON in Step 2, or select a more drought/heat-tolerant crop.");
