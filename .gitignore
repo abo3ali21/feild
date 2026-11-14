@@ -1,4 +1,3 @@
-
 .env
 .env.*
 !.env.example
@@ -13,8 +12,10 @@ frontend/dist/
 frontend/.sites-runtime/
 
 firmware/**/Secrets.h
+firmware/field_shift_esp32/Secrets.h
 backend/sensor_readings.db
 sensor_readings.db
 *.db
 backups/
 backend/sensor_setup.local.json
+*.zip

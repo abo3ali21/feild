@@ -38,11 +38,32 @@ export function RotationCards({ rotations }: RotationCardsProps) {
                 <span className="step-label">{t.results.sequence}</span>
                 <h3>{rotation.sequence.map((crop) => cropName(crop)).join(lang === "ar" ? " ← " : " → ")}</h3>
               </div>
-              {rotation.rank === 1 && (
-                <span className="best-fit">
-                  <Leaf size={14} /> {t.results.strongestFit}
-                </span>
-              )}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                {rotation.rank === 1 && (
+                  <span className="best-fit">
+                    <Leaf size={14} /> {t.results.strongestFit}
+                  </span>
+                )}
+                {rotation.ml_confidence_pct !== undefined && rotation.ml_confidence_pct !== null && (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "3px 8px",
+                      borderRadius: "6px",
+                      background: "rgba(147, 51, 234, 0.12)",
+                      border: "1px solid rgba(147, 51, 234, 0.3)",
+                      color: "#9333ea",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                    }}
+                  >
+                    <Sparkles size={12} />
+                    {lang === "ar" ? `ثقة ML: ${rotation.ml_confidence_pct}%` : `ML Confidence: ${rotation.ml_confidence_pct}%`}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="timeline">

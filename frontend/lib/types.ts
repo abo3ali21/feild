@@ -40,6 +40,9 @@ export type Rotation = {
   explanations: string[];
   warnings: string[];
   factors?: Record<string, string[]>;
+  ml_confidence_pct?: number;
+  final_hybrid_score?: number;
+  scoring_mode?: string;
 };
 
 export type DataStatus = string;

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
@@ -7,13 +8,16 @@ import {
   ChevronLeft,
   ChevronRight,
   CloudSun,
+  Cpu,
   Droplets,
   FlaskConical,
   Globe,
   Info,
   Orbit,
+  Radio,
   RefreshCw,
   ShieldCheck,
+  Sparkles,
   Sprout,
   TriangleAlert,
   X,
@@ -104,6 +108,46 @@ export default function Home() {
   const [rainChange, setRainChange] = useState(0);
   const [tempChange, setTempChange] = useState(0);
   const [methodOpen, setMethodOpen] = useState(false);
+
+  // Track whether live ESP32 Ground-Truth data is overriding satellite estimates
+  const [hardwareOverride, setHardwareOverride] = useState<{
+    active: boolean;
+    temperature_c: number;
+    humidity_pct: number;
+    soil_moisture_pct: number;
+    gas_resistance_kohm: number;
+    timestamp: number;
+  } | null>(null);
+
+  // Toggle between Pure Rule-Based and Hybrid (Rule + ML Recommender)
+  const [useMlRecommender, setUseMlRecommender] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkOverride = () => {
+      const saved = localStorage.getItem("field_shift_hardware_override");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed?.active) {
+            setHardwareOverride(parsed);
+          }
+        } catch (err) {
+          console.error("Failed to parse hardware override:", err);
+        }
+      } else {
+        setHardwareOverride(null);
+      }
+    };
+    checkOverride();
+    window.addEventListener("storage", checkOverride);
+    return () => window.removeEventListener("storage", checkOverride);
+  }, []);
+
+  const clearHardwareOverride = () => {
+    localStorage.removeItem("field_shift_hardware_override");
+    setHardwareOverride(null);
+  };
 
   useEffect(() => {
     let active = true;
@@ -218,6 +262,9 @@ export default function Home() {
       is_irrigated: irrigated,
       farmer_priority: priority,
       demo_profile_id: useLiveSatellite ? undefined : demo.id === "custom" ? undefined : demo.id,
+      soil_moisture_override: hardwareOverride?.active ? hardwareOverride.soil_moisture_pct : undefined,
+      temperature_override: hardwareOverride?.active ? hardwareOverride.temperature_c : undefined,
+      use_ml_blend: useMlRecommender,
     };
 
     try {
@@ -299,7 +346,58 @@ export default function Home() {
         onRestart={restart}
         results={view === "results"}
         apiOnline={apiOnline}
+        useMlRecommender={useMlRecommender}
+        setUseMlRecommender={setUseMlRecommender}
+        hardwareOverride={hardwareOverride}
       />
+      {hardwareOverride?.active && (
+        <div
+          style={{
+            maxWidth: "1120px",
+            margin: "0.75rem auto",
+            padding: "0.6rem 1rem",
+            borderRadius: "10px",
+            background: "rgba(16, 185, 129, 0.12)",
+            border: "1px solid rgba(16, 185, 129, 0.35)",
+            fontSize: "0.82rem",
+            color: "#065f46",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "0.5rem",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <Radio size={16} style={{ color: "#10b981" }} />
+            <span>
+              <strong>
+                {lang === "ar"
+                  ? "معايرة الحساس الحقلية نشطة (ESP32 Ground-Truth Active):"
+                  : "Field Sensor Calibration Active (ESP32 Ground-Truth):"}
+              </strong>{" "}
+              {lang === "ar"
+                ? `حرارة الحقل ${hardwareOverride.temperature_c.toFixed(1)}°C | رطوبة الجذور ${hardwareOverride.soil_moisture_pct.toFixed(1)}% | الرطوبة النسبية ${hardwareOverride.humidity_pct.toFixed(1)}%`
+                : `Field Temp: ${hardwareOverride.temperature_c.toFixed(1)}°C | Root Moisture: ${hardwareOverride.soil_moisture_pct.toFixed(1)}% | Relative Humidity: ${hardwareOverride.humidity_pct.toFixed(1)}%`}
+            </span>
+          </div>
+          <button
+            onClick={clearHardwareOverride}
+            style={{
+              padding: "0.25rem 0.6rem",
+              borderRadius: "6px",
+              background: "#ffffff",
+              border: "1px solid rgba(16, 185, 129, 0.4)",
+              color: "#065f46",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {lang === "ar" ? "إلغاء المعايرة والعودة للقمر الصناعي" : "Reset to Satellite Estimates"}
+          </button>
+        </div>
+      )}
       {view === "setup" && (
         <Setup
           demo={demo}
@@ -349,11 +447,17 @@ function Header({
   onRestart,
   results,
   apiOnline,
+  useMlRecommender,
+  setUseMlRecommender,
+  hardwareOverride,
 }: {
   onMethod: () => void;
   onRestart: () => void;
   results: boolean;
   apiOnline: boolean;
+  useMlRecommender: boolean;
+  setUseMlRecommender: (b: boolean) => void;
+  hardwareOverride: { active: boolean; temperature_c: number; soil_moisture_pct: number; humidity_pct: number } | null;
 }) {
   const { lang, toggle, t } = useLang();
   return (
@@ -367,8 +471,67 @@ function Header({
       <nav aria-label={t.nav.primary}>
         <button onClick={onMethod}>{t.nav.method}</button>
         <a href="#sources">{t.nav.sources}</a>
+        <Link
+          href="/hardware"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            color: "#059669",
+            fontWeight: 700,
+            textDecoration: "none",
+            padding: "0.25rem 0.5rem",
+            borderRadius: "6px",
+            background: "rgba(16, 185, 129, 0.1)",
+          }}
+        >
+          <Cpu size={15} />
+          <span>{lang === "ar" ? "وحدة الاستشعار (ESP32)" : "Hardware Node"}</span>
+          {hardwareOverride?.active && (
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "#10b981",
+                display: "inline-block",
+                boxShadow: "0 0 6px #10b981",
+              }}
+            />
+          )}
+        </Link>
       </nav>
       <div className="header-actions">
+        {/* ML Hybrid Toggle Button */}
+        <button
+          onClick={() => setUseMlRecommender(!useMlRecommender)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "5px",
+            padding: "0.35rem 0.65rem",
+            borderRadius: "8px",
+            fontSize: "0.75rem",
+            fontWeight: 700,
+            background: useMlRecommender ? "rgba(147, 51, 234, 0.12)" : "rgba(0, 0, 0, 0.05)",
+            border: useMlRecommender ? "1px solid rgba(147, 51, 234, 0.35)" : "1px solid rgba(0, 0, 0, 0.12)",
+            color: useMlRecommender ? "#7e22ce" : "#64748b",
+            cursor: "pointer",
+          }}
+          title={lang === "ar" ? "التبديل بين التقييم الهجين والتقييم الإرشادي فقط" : "Toggle Hybrid Rule-Based + ML Recommender"}
+        >
+          <Sparkles size={13} />
+          <span>
+            {useMlRecommender
+              ? lang === "ar"
+                ? "هجين (قواعد + ML)"
+                : "Hybrid: Rules + ML"
+              : lang === "ar"
+              ? "قواعد فقط"
+              : "Rule-Based Only"}
+          </span>
+        </button>
+
         <button className="lang-toggle" onClick={toggle} aria-label={t.toggle.aria}>
           <Globe size={15} />
           <span>{t.toggle.label}</span>

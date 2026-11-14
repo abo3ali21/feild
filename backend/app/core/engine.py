@@ -8,6 +8,8 @@ from pathlib import Path
 from app.core.calculations import (
     calculate_effective_water,
     clamp,
+    compute_hybrid_plan_score,
+    compute_ml_crop_suitability,
     normalize_weights,
 )
 from app.models.schemas import Crop, Decision, EnvironmentalContext, Priority, Rotation, ScoreSet, SequenceItem
@@ -101,7 +103,7 @@ def family_break(sequence: tuple[Crop, ...], current: Crop) -> Decision:
     return Decision(passed=True, rule="FAMILY_BREAK", reason="The sequence respects configured crop-family breaks.")
 
 
-def score_rotation(sequence: tuple[Crop, ...], context: EnvironmentalContext, irrigated: bool, priority: Priority, irrigation_supply_mm: float | None = None) -> Rotation:
+def score_rotation(sequence: tuple[Crop, ...], context: EnvironmentalContext, irrigated: bool, priority: Priority, irrigation_supply_mm: float | None = None, use_ml_blend: bool = True) -> Rotation:
     # 1. Climate factor: Crop-specific GDD and heat stress
     climate_parts = []
     for crop in sequence:
@@ -184,6 +186,15 @@ def score_rotation(sequence: tuple[Crop, ...], context: EnvironmentalContext, ir
         explanations.append("Alternating root depth structures prevents hardpan compaction and optimizes subsoil nutrient extraction.")
     explanations.append("Strict crop-family disease break requirements are fully satisfied.")
 
+    # Lightweight Gaussian Likelihood ML Scorer
+    temp_c = 28.0 if context.heat_stress_days > 20 else 22.0
+    moisture_pct = (context.soil_moisture_index * 100.0) if context.soil_moisture_index is not None else min(80.0, max(20.0, (effective_water / 600.0) * 60.0))
+    ml_crop_probs = [
+        compute_ml_crop_suitability(crop, temp_c=temp_c, soil_moisture_pct=moisture_pct, soil_ph=context.soil_ph)
+        for crop in sequence
+    ]
+    hybrid_meta = compute_hybrid_plan_score(score.overall, ml_crop_probs, use_ml_blend=use_ml_blend)
+
     return Rotation(
         rank=0,
         sequence=[SequenceItem(year=i + 1, crop_id=c.crop_id, name=c.common_name) for i, c in enumerate(sequence)],
@@ -208,10 +219,20 @@ def score_rotation(sequence: tuple[Crop, ...], context: EnvironmentalContext, ir
                 "Family disease break satisfied",
             ],
         },
+        ml_confidence_pct=hybrid_meta["ml_confidence_pct"],
+        final_hybrid_score=hybrid_meta["final_hybrid_score"],
+        scoring_mode=hybrid_meta["scoring_mode"],
     )
 
 
-def rank_rotations(context: EnvironmentalContext, current_crop_id: str, irrigated: bool, priority: Priority, irrigation_supply_mm: float | None = None) -> tuple[list[Rotation], list[Decision]]:
+def rank_rotations(
+    context: EnvironmentalContext,
+    current_crop_id: str,
+    irrigated: bool,
+    priority: Priority,
+    irrigation_supply_mm: float | None = None,
+    use_ml_blend: bool = True,
+) -> tuple[list[Rotation], list[Decision]]:
     crops = load_crops()
     by_id = {crop.crop_id: crop for crop in crops}
     if current_crop_id not in by_id:
@@ -235,7 +256,7 @@ def rank_rotations(context: EnvironmentalContext, current_crop_id: str, irrigate
             continue
         if len({crop.family for crop in sequence}) < 3:
             continue
-        candidates.append(score_rotation(sequence, context, irrigated, priority, irrigation_supply_mm=irrigation_supply_mm))
+        candidates.append(score_rotation(sequence, context, irrigated, priority, irrigation_supply_mm=irrigation_supply_mm, use_ml_blend=use_ml_blend))
 
     # Sort descending by overall score, then water score
     candidates.sort(key=lambda item: (-item.scores.overall, -item.scores.water, tuple(c.crop_id for c in item.sequence)))

@@ -49,9 +49,45 @@ def test_evaluation_persists_across_restart():
     # Simulation should transparently reload the evaluation from persistent storage
     response = client.post("/api/v1/farms/simulate", json={
         "evaluation_id": eval_id,
-        "rainfall_change_pct": -20,
-        "temperature_change_c": 2,
+        "rainfall_change_pct": 10,
+        "temperature_change_c": 1,
         "irrigation_available": True,
     })
     assert response.status_code == 200
     assert response.json()["evaluation_id"] != eval_id
+
+
+def test_hybrid_ml_confidence_and_scoring():
+    from app.core.calculations import compute_hybrid_plan_score, compute_ml_crop_suitability
+
+    crop = {"crop_id": "sorghum", "temp_min": 18, "temp_max": 35, "water_mm": 400, "ph_optimal": 6.8}
+    prob = compute_ml_crop_suitability(crop, temp_c=28.0, soil_moisture_pct=45.0, soil_ph=7.0)
+    assert 0.0 <= prob <= 100.0
+
+    plan_score = compute_hybrid_plan_score(rule_score=80.0, crop_ml_probs=[prob, prob, prob], use_ml_blend=True)
+    assert plan_score["scoring_mode"] == "Hybrid (Rule-Based + ML)"
+    assert "ml_confidence_pct" in plan_score
+    assert "final_hybrid_score" in plan_score
+
+
+def test_hardware_sensor_ingest_and_latest():
+    payload_data = {
+        "device_id": "esp32-field-node-01",
+        "temperature_c": 29.5,
+        "humidity_pct": 46.0,
+        "pressure_hpa": 1011.2,
+        "gas_resistance_kohm": 140.0,
+        "soil_moisture_pct": 58.2,
+        "soil_raw_adc": 1890,
+        "rssi_dbm": -62,
+    }
+    ingest_res = client.post("/api/sensors/ingest", json=payload_data)
+    assert ingest_res.status_code == 200
+    assert ingest_res.json()["received"] is True
+
+    latest_res = client.get("/api/sensors/latest")
+    assert latest_res.status_code == 200
+    data = latest_res.json()
+    assert data["active"] is True
+    assert data["temperature_c"] == 29.5
+    assert data["soil_moisture_pct"] == 58.2

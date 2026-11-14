@@ -9,7 +9,7 @@ from copy import deepcopy
 from datetime import timedelta
 from uuid import uuid4
 
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import Body, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.calculations import precipitation_anomaly, rainfall_status
@@ -139,7 +139,17 @@ async def evaluate_request(request: FarmRequest, evaluation_id: str | None = Non
     try:
         context, provenance = await build_context(request)
         apply_sensor_context(context, provenance, request)
-        rotations, rejected = rank_rotations(context, request.current_crop_id, request.is_irrigated, request.farmer_priority)
+        if request.soil_moisture_override is not None:
+            context.soil_moisture_index = max(0.0, min(1.0, request.soil_moisture_override / 100.0))
+            context.soil_moisture_state = "HARDWARE_CALIBRATED"
+        rotations, rejected = rank_rotations(
+            context,
+            request.current_crop_id,
+            request.is_irrigated,
+            request.farmer_priority,
+            irrigation_supply_mm=request.irrigation_supply_mm,
+            use_ml_blend=request.use_ml_blend,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not rotations:
@@ -197,3 +207,59 @@ async def simulate(request: SimulationRequest):
     except Exception as exc:
         logger.warning("Could not persist simulated evaluation: %s", exc)
     return response
+
+
+LATEST_HARDWARE_TELEMETRY: dict[str, Any] = {
+    "active": False,
+    "device_id": "esp32-field-node-01",
+    "temperature_c": 28.4,
+    "humidity_pct": 42.0,
+    "pressure_hpa": 1010.5,
+    "gas_resistance_kohm": 138.2,
+    "soil_moisture_pct": 34.5,
+    "soil_raw_adc": 2480,
+    "rssi_dbm": -68,
+    "timestamp": time.time(),
+    "is_synthetic": True,
+}
+
+
+@app.post("/api/sensors/ingest")
+@app.post("/api/v1/sensors/ingest")
+async def ingest_hardware_telemetry(payload: dict[str, Any] = Body(...)):
+    global LATEST_HARDWARE_TELEMETRY
+    now = time.time()
+    LATEST_HARDWARE_TELEMETRY = {
+        "active": True,
+        "device_id": str(payload.get("device_id", "esp32-field-node-01")),
+        "temperature_c": float(payload.get("temperature_c", 28.0)),
+        "humidity_pct": float(payload.get("humidity_pct", payload.get("humidity_percent", 45.0))),
+        "pressure_hpa": float(payload.get("pressure_hpa", 1012.0)),
+        "gas_resistance_kohm": float(payload.get("gas_resistance_kohm", payload.get("gas_resistance_ohms", 145000) / 1000.0)),
+        "soil_moisture_pct": float(payload.get("soil_moisture_pct", 50.0)),
+        "soil_raw_adc": int(payload.get("soil_raw_adc", payload.get("soil_moisture_raw", 2000))),
+        "rssi_dbm": int(payload.get("rssi_dbm", -70)),
+        "timestamp": now,
+        "is_synthetic": False,
+    }
+    logger.info("hardware_telemetry_ingested device=%s temp=%.1f moisture=%.1f", LATEST_HARDWARE_TELEMETRY["device_id"], LATEST_HARDWARE_TELEMETRY["temperature_c"], LATEST_HARDWARE_TELEMETRY["soil_moisture_pct"])
+    return {"status": "ok", "received": True, "device_id": LATEST_HARDWARE_TELEMETRY["device_id"], "timestamp": now}
+
+
+@app.get("/api/sensors/latest")
+@app.get("/api/v1/sensors/latest")
+def get_latest_hardware_telemetry():
+    global LATEST_HARDWARE_TELEMETRY
+    return {"status": "ok", **LATEST_HARDWARE_TELEMETRY}
+
+
+@app.post("/api/sensors/override")
+@app.post("/api/v1/sensors/override")
+def override_hardware_telemetry(payload: dict[str, Any] = Body(...)):
+    global LATEST_HARDWARE_TELEMETRY
+    now = time.time()
+    LATEST_HARDWARE_TELEMETRY.update(payload)
+    LATEST_HARDWARE_TELEMETRY["timestamp"] = now
+    LATEST_HARDWARE_TELEMETRY["active"] = True
+    return {"status": "ok", **LATEST_HARDWARE_TELEMETRY}
+

@@ -33,6 +33,9 @@ class FarmRequest(BaseModel):
     irrigation_supply_mm: float | None = Field(default=None, ge=0, le=2000)
     farmer_priority: Priority = Priority.balanced
     demo_profile_id: str | None = None
+    soil_moisture_override: float | None = None
+    temperature_override: float | None = None
+    use_ml_blend: bool = True
 
 
 class SimulationRequest(BaseModel):
@@ -109,6 +112,9 @@ class Rotation(BaseModel):
     explanations: list[str]
     warnings: list[str]
     factors: dict[str, list[str]]
+    ml_confidence_pct: float | None = None
+    final_hybrid_score: float | None = None
+    scoring_mode: str | None = None
 
 
 class Provenance(BaseModel):
