@@ -165,7 +165,7 @@ def fallback_for(request: FarmRequest) -> tuple[EnvironmentalContext, list[Prove
 
 
 async def build_context(request: FarmRequest) -> tuple[EnvironmentalContext, list[Provenance]]:
-    if os.getenv("DEMO_MODE", "true").lower() == "true" or request.demo_profile_id:
+    if os.getenv("DEMO_MODE", "false").lower() == "true" or request.demo_profile_id:
         return fallback_for(request)
     client, cache = RetryingClient(), TTLCache()
     climate_adapter, soil_adapter = NasaPowerAdapter(client, cache), SoilGridsAdapter(client, cache)

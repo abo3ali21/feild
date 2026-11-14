@@ -8,16 +8,16 @@ This directory contains the Next.js frontend for Field Shift, a decision-support
 - npm
 - The Field Shift backend for live evaluations (the UI uses a labelled demonstration fallback when it is unavailable)
 
-## Development
+## Local run with the API
 
-From this directory:
+Install backend dependencies and start FastAPI first (see the root `README.md`), then from this directory run:
 
-```sh
+```powershell
 npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. Configure `NEXT_PUBLIC_API_BASE_URL` to point to the backend when it is not running at `http://localhost:8000`.
+Open http://localhost:3000. The local Next.js rewrite proxies `/api/...` calls to `http://localhost:8000`, so no frontend `.env` is needed. The interface still falls back to clearly labelled demo results if the backend or upstream data providers are unavailable.
 
 ## Checks
 

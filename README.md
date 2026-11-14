@@ -1,95 +1,74 @@
-# Field Shift: Adapting Farms with NASA Data
+# Field Shift
 
-Field Shift is a transparent decision-support application for comparing three-year crop rotations against regional climate evidence, estimated soil conditions, crop-family breaks, and a deterministic multi-criteria scoring model. It does not predict yield.
+Field Shift helps compare three-year crop rotations using regional climate evidence, estimated soil conditions, crop-family breaks, and a deterministic scoring model. It does not predict yield.
 
-## Architecture
+## Fast local run with NASA, soil data, and sensors
 
-- `frontend/`: Next.js/TypeScript planning workflow.
-- `backend/`: FastAPI API, environmental adapters, deterministic ranking engine, and sensor integration.
-- `firmware/field_shift_esp32/`: ESP32 firmware for local sensor readings and authenticated uploads.
-- `hardware/`: notes and source sketches for the original sensor hardware.
+You need Node.js 22+, Python 3.12+, and internet access for the NASA POWER and SoilGrids requests. No `.env` file is required.
 
-## Local setup (Windows PowerShell)
+### 1. Install backend dependencies (once)
 
-Requirements: Node.js 22+, Python 3.12+, and npm.
-
-From the repository root:
+Open PowerShell in the project root:
 
 ```powershell
-Copy-Item .env.example .env
-```
-
-Start the backend in one terminal:
-
-```powershell
-cd backend
+cd C:\Users\menat\Downloads\feild\backend
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
+
+### 2. Start the backend
+
+In that same PowerShell window:
+
+```powershell
+$env:DEMO_MODE = "false"
+$env:CORS_ORIGINS = "http://localhost:3000"
 uvicorn app.main:app --reload --port 8000
 ```
 
-Start the frontend in another terminal:
+Keep this window open. The backend will try NASA POWER and SoilGrids for custom coordinates and use labelled fallback data if those sources are unavailable. Selecting one of the five named demo farms deliberately uses its demo profile instead of live requests.
+
+### 3. Install and start the frontend
+
+Open a second PowerShell window:
 
 ```powershell
-cd frontend
+cd C:\Users\menat\Downloads\feild\frontend
 npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. The root `.env` is for local reference; the backend reads environment variables from its process, and Next.js reads frontend variables at build time. If not using a dotenv loader, set variables in each terminal before starting the corresponding service. By default, the frontend uses same-origin `/api` calls; set `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000` if developing without the Vercel local proxy configuration.
+Open http://localhost:3000. The frontend's local Next.js proxy forwards `/api/...` requests to the backend at port 8000.
 
-## Deploy frontend and backend to Vercel
+### 4. Connect the ESP32
 
-This repository has a root `vercel.json` configured for Vercel Services: Next.js at `/` and FastAPI mounted under `/api`. Vercel Services availability may depend on your account/plan and is subject to the platform's current beta/rollout status. Check your Vercel dashboard supports Services before using this deployment shape.
+The backend includes a placeholder device registration in `backend/app/data/sensor_setup.json`. To use your board:
 
-1. Push the repository to GitHub/GitLab/Bitbucket and import it into Vercel.
-2. Keep the Vercel project root directory set to the repository root (do not set it to `frontend/`); the root `vercel.json` defines both services.
-3. Set the project's environment variables in **Settings → Environment Variables**:
-   - `DEMO_MODE=false` for Production; use `true` for Preview if you want only demo data.
-   - `CORS_ORIGINS` to the exact Vercel site origin, for example `https://your-project.vercel.app` (no trailing slash). If you use a custom domain, include that origin too, comma-separated.
-   - `SENSOR_INTERNAL_TOKEN` only if internal sensor query endpoints are used. Generate a long random secret and do not prefix it with `NEXT_PUBLIC_`.
-   - `SENSOR_SETUP_PATH` / `SENSOR_DB_PATH` are not durable storage on serverless functions. Do not rely on local files or SQLite for production sensor persistence; configure durable external storage before enabling real sensor ingestion.
-4. Do not set `NEXT_PUBLIC_API_BASE_URL` for the combined deployment. The frontend uses same-origin requests to `/api/v1/...`; Vercel routes those to the backend service.
-5. Deploy, then verify `https://your-project.vercel.app/api/v1/health` and the frontend homepage. Test `/api/v1/demo-profiles` and a farm evaluation as well.
-6. After adding or changing variables in Vercel, redeploy so build-time frontend settings and backend settings take effect.
+1. In Arduino IDE, install ESP32 board support and the libraries `U8g2`, `Adafruit Unified Sensor`, and `Adafruit BME680`.
+2. Open `firmware/field_shift_esp32/Secrets.example.h`, save a copy beside it named `Secrets.h`, and fill in your Wi-Fi name/password, a device ID, and a long device key. Do not share or commit this file.
+3. Find your computer's local IPv4 address (Windows: run `ipconfig` and look for the active Wi-Fi adapter's IPv4 Address). Put it in `API_BASE_URL`, like `http://192.168.1.25:8000`—not `localhost`.
+4. In `backend/app/data/sensor_setup.json`, replace the example device `api_key` with exactly the same device key. Put the farm's actual latitude/longitude in the matching farm entry. Make sure the analysis uses those coordinates to three decimal places (for example `14.120`, `-16.035`).
+5. Connect the BME680 over I2C at address `0x77`, the soil probe signal to GPIO32, and the SSD1306 OLED over hardware I2C. Power the components according to their specifications; do not connect a 5V signal to an ESP32 GPIO.
+6. Compile/upload the sketch from Arduino IDE. Keep both backend and frontend running. The OLED updates locally; uploads are sent about every 15 minutes. The device needs Wi-Fi and correct time from NTP before the first upload.
+7. If upload fails, check Arduino Serial Monitor at 115200 baud, confirm the computer and board are on the same Wi-Fi/LAN, and allow inbound TCP port 8000 in Windows Firewall. Do not expose port 8000 directly to the public internet.
 
-The frontend and backend share one Vercel origin in this setup, so CORS is generally not needed for browser API calls. Keep `CORS_ORIGINS` restricted to the actual site origin for any cross-origin clients.
+The backend associates devices to farms from `sensor_setup.json`, not from data in the upload. The only sensor value currently affecting recommendations is soil moisture. It is a device-relative index using the default ADC thresholds (wet 1500, dry 2500), not a laboratory volumetric-water percentage. The sensor only affects scoring when evaluation coordinates match the registered farm after rounding to three decimal places.
 
-**Persistence limitation:** `EVALUATIONS`, the sensor limiter, TTL cache, SQLite, and sensor setup file are process-local or filesystem-backed. Vercel Functions may scale and recycle instances, so the current API is not production-ready for persistent sensor readings or reliable simulation across separate invocations. A persistent database/shared state service is needed for those use cases. If Vercel Services is unavailable for your account, deploy the frontend and backend as separate Vercel projects (frontend root `frontend/`, backend root `backend/` with a FastAPI entrypoint) and set the frontend's `NEXT_PUBLIC_API_BASE_URL` to the backend's public URL; configure backend `CORS_ORIGINS` to the frontend origin.
 
-For current setup/deployment details, see [Vercel Services](https://vercel.com/docs/services), [Services routing](https://vercel.com/docs/services/routing), and [FastAPI on Vercel](https://vercel.com/docs/frameworks/backend/fastapi).
+Backend API docs: http://localhost:8000/docs.
 
-## Local environment variables
+## Deployment note
 
-| Variable | Purpose | Local default |
-| --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | API base URL used by the browser; blank uses same-origin `/api` | blank |
-| `DEMO_MODE` | Skip external data calls and use clearly labelled demo estimates | `true` |
-| `CORS_ORIGINS` | Comma-separated allowed frontend origins | `http://localhost:3000` |
-| `SENSOR_DB_PATH` | SQLite path for local sensor readings | `./sensor_readings.db` |
-| `SENSOR_SETUP_PATH` | Device/farm association JSON | `backend/app/data/sensor_setup.json` |
-| `SENSOR_INTERNAL_TOKEN` | Secret for internal sensor query routes | unset; query routes reject requests |
-| `SENSOR_MAX_AGE_HOURS` | Freshness window for sensor scoring | `24` |
-| `SENSOR_WATER_INFLUENCE` | Bounded soil-moisture effect on water score; `0` disables | `0.10` |
-| `SENSOR_RATE_LIMIT_PER_MINUTE` | Per-device submission limit in this process | `10` |
+The root `vercel.json` describes a combined Vercel Services deployment. Vercel Services availability can vary by account/plan and platform rollout; check that it is available to your account before relying on it.
 
-Never commit real credentials. `.env` is git-ignored; configure production secrets in Vercel's dashboard.
+The backend currently keeps evaluations in memory and sensor records in local SQLite/files. Serverless instances may restart or scale independently, so persistent evaluation/sensor behavior requires a durable shared database before production use.
 
-## API
+## Main folders
 
-- `GET /api/v1/health`
-- `GET /api/v1/crops`
-- `GET /api/v1/demo-profiles`
-- `POST /api/v1/farms/evaluate`
-- `POST /api/v1/farms/simulate`
-- `POST /api/v1/sensors/readings`
-- `GET /api/v1/sensors/{farm_id}/latest`
-- `GET /api/v1/sensors/{farm_id}/history`
-- `GET /api/v1/sensors/{farm_id}/status`
+- `frontend/`: Next.js user interface and built-in demo fallback.
+- `backend/`: FastAPI API and deterministic crop-rotation engine.
+- `firmware/field_shift_esp32/`: ESP32 sensor firmware.
+- `hardware/`: verified hardware notes and original sketches.
 
-Interactive API documentation is available at `/docs` when the backend is running.
-
-## Method and limitations
-
-The engine filters crops using configurable heat, water, pH, irrigation, and family-break criteria. It scores viable three-year rotations across climate, water, soil, and diversity dimensions with transparent preset weights. Reference crop thresholds require local agronomic calibration. NASA POWER and SoilGrids are regional estimates; demo/fallback data is visibly labelled. The application is comparative decision support, not a yield forecast or substitute for local extension advice.
+Always treat recommendations as comparative decision support and verify them with local agronomic guidance before planting.

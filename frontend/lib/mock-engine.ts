@@ -2,7 +2,7 @@ import { CROPS, DICTS } from "@/app/i18n";
 
 export type Demo = { id:string;name:string;country:string;system:string;latitude:number;longitude:number;currentCrop:string;soil:string;irrigated:boolean;priority:string };
 export type Rotation = { rank:number;sequence:{year:number;crop_id:string;name:string}[];scores:{overall:number;climate:number;water:number;soil:number;diversity:number};explanations:string[];warnings:string[];factors:Record<string,string[]> };
-export type Evaluation = { status:string;evaluation_id:string;environmental_context:{annual_gdd:number;seasonal_rainfall_mm:number;historical_rainfall_mm:number;precipitation_anomaly_pct:number;rainfall_status:string;heat_stress_days:number;soil_moisture_state:string;soil_texture:string;soil_ph:number;soil_organic_matter_pct:number;data_quality:Record<string,string>};data_provenance:{variable:string;source:string;status:string}[];recommended_rotations:Rotation[] };
+export type Evaluation = { status:string;evaluation_id:string;environmental_context:{annual_gdd:number;seasonal_rainfall_mm:number;historical_rainfall_mm:number;precipitation_anomaly_pct:number;rainfall_status:string;heat_stress_days:number;soil_moisture_state:string;soil_texture:string;soil_ph:number;soil_organic_matter_pct:number;data_quality:Record<string,string>};data_provenance:{variable:string;source:string;status:string}[];recommended_rotations:Rotation[];rejected_examples?:{passed:boolean;rule:string;reason:string}[] };
 
 export const DEMOS:Demo[]=[
   {id:"sahel",name:"Semi-Arid Sahel",country:"Senegal",system:"Rainfed",latitude:14.1203,longitude:-16.0351,currentCrop:"groundnut",soil:"SANDY_LOAM",irrigated:false,priority:"drought_resilience"},
