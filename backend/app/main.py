@@ -27,7 +27,7 @@ app = FastAPI(
     version="0.1.0",
     description="Transparent, deterministic climate-resilient crop rotation decision support.",
 )
-origins = [item.strip() for item in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if item.strip()]
+origins = [item.strip() for item in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if item.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False, allow_methods=["GET", "POST"], allow_headers=["*"])
 
 EVALUATIONS: dict[str, tuple[FarmRequest, EvaluationResponse]] = {}
