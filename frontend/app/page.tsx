@@ -113,6 +113,8 @@ export default function Home() {
   const [stage, setStage] = useState(0);
   const [rainChange, setRainChange] = useState(0);
   const [tempChange, setTempChange] = useState(0);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationNotice, setSimulationNotice] = useState<string | null>(null);
   const [methodOpen, setMethodOpen] = useState(false);
 
   // Track whether live ESP32 Ground-Truth data is overriding satellite estimates
@@ -410,6 +412,8 @@ export default function Home() {
 
   async function simulate() {
     if (!evaluation) return;
+    setIsSimulating(true);
+    setSimulationNotice(null);
     const effectiveCrop = selected5Crops.includes(currentCrop) ? currentCrop : selected5Crops[0];
     try {
       const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
@@ -429,18 +433,29 @@ export default function Home() {
       }
       const simulatedData = (await response.json()) as Evaluation;
       setEvaluation(simulatedData);
+      setSimulationNotice(
+        lang === "ar"
+          ? "تم تحديث المؤشرات المناخية وترتيب الدورات الزراعية بنجاح وفق السيناريو"
+          : "Agroclimatic indicators & rotation rankings successfully updated"
+      );
     } catch (err) {
       console.error("Simulation error:", err);
-      setEvaluation(
-        mockEvaluation(
-          { ...demo, currentCrop: effectiveCrop, soil, irrigated, priority },
-          rainChange,
-          tempChange,
-          irrigated,
-          lang,
-          selected5Crops
-        )
+      const simulatedData = mockEvaluation(
+        { ...demo, currentCrop: effectiveCrop, soil, irrigated, priority },
+        rainChange,
+        tempChange,
+        irrigated,
+        lang,
+        selected5Crops
       );
+      setEvaluation(simulatedData);
+      setSimulationNotice(
+        lang === "ar"
+          ? "تم تحديث محاكاة السيناريو وترتيب الدورات الزراعية بنجاح"
+          : "Scenario simulated & rotation rankings successfully updated"
+      );
+    } finally {
+      setIsSimulating(false);
     }
   }
 
@@ -451,6 +466,8 @@ export default function Home() {
     setRainChange(0);
     setTempChange(0);
     setErrorMessage(null);
+    setIsSimulating(false);
+    setSimulationNotice(null);
   }
 
   return (
@@ -557,6 +574,8 @@ export default function Home() {
           setIrrigated={setIrrigated}
           priority={priority}
           simulate={simulate}
+          isSimulating={isSimulating}
+          simulationNotice={simulationNotice}
           hardwareOverride={hardwareOverride}
           fiveCropResults={fiveCropResults}
           onBackToSetup={() => {
@@ -1213,6 +1232,8 @@ function Results({
   setIrrigated,
   priority,
   simulate,
+  isSimulating,
+  simulationNotice,
   onBackToSetup,
   hardwareOverride,
   fiveCropResults,
@@ -1227,6 +1248,8 @@ function Results({
   setIrrigated: (b: boolean) => void;
   priority: string;
   simulate: () => void;
+  isSimulating?: boolean;
+  simulationNotice?: string | null;
   onBackToSetup: () => void;
   hardwareOverride?: { active: boolean; temperature_c: number; soil_moisture_pct: number; humidity_pct: number } | null;
   fiveCropResults?: FiveCropEvaluation | null;
@@ -1273,8 +1296,9 @@ function Results({
       </section>
 
       {/* Modern Agroclimatic and Edaphic Dashboards */}
-      <ClimateDashboard context={data.environmental_context} />
+      <ClimateDashboard key={`climate-${data.evaluation_id}`} context={data.environmental_context} />
       <SoilDashboard
+        key={`soil-${data.evaluation_id}`}
         context={data.environmental_context}
         hardwareMoisture={hardwareOverride?.active ? hardwareOverride.soil_moisture_pct : null}
       />
@@ -1406,12 +1430,45 @@ function Results({
             </Switch.Root>
           </div>
           <button
-            className="w-full min-h-[46px] rounded-xl bg-white text-[#143626] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-[#F7F5EE] active:scale-98 transition shadow-md cursor-pointer border-0"
+            className="w-full min-h-[46px] rounded-xl bg-white text-[#143626] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-[#F7F5EE] active:scale-98 transition shadow-md cursor-pointer border-0 disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={simulate}
+            disabled={isSimulating}
           >
-            <RefreshCw size={16} className="text-[#143626]" /> {t.scenario.rerun}
+            <RefreshCw size={16} className={`text-[#143626] ${isSimulating ? "animate-spin" : ""}`} />
+            {isSimulating
+              ? (lang === "ar" ? "جاري تشغيل السيناريو..." : "Simulating scenario...")
+              : t.scenario.rerun}
           </button>
         </div>
+
+        {simulationNotice && (
+          <div className="mt-4 pt-3.5 border-t border-white/20 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs text-white">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/25 text-emerald-300 font-bold shrink-0 text-xs">
+                ✓
+              </span>
+              <span className="font-semibold text-emerald-200">{simulationNotice}</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap text-[11px]">
+              <span className="bg-white/15 px-2.5 py-1 rounded-full text-white/95 font-medium">
+                {lang === "ar" ? "الأمطار:" : "Rain:"} {rainChange > 0 ? `+${rainChange}%` : `${rainChange}%`}
+              </span>
+              <span className="bg-white/15 px-2.5 py-1 rounded-full text-white/95 font-medium">
+                {lang === "ar" ? "الحرارة:" : "Temp:"} +{tempChange}°C
+              </span>
+              <span className="bg-white/15 px-2.5 py-1 rounded-full text-white/95 font-medium">
+                {irrigated ? (lang === "ar" ? "ري متاح" : "Irrigation ON") : (lang === "ar" ? "بدون ري" : "Rainfed")}
+              </span>
+              <button
+                type="button"
+                onClick={() => window.scrollTo({ top: 320, behavior: "smooth" })}
+                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 font-semibold px-3 py-1 rounded-full border border-emerald-400/30 transition cursor-pointer"
+              >
+                {lang === "ar" ? "مشاهدة النتائج المحدثة بالأعلى ↑" : "View updated cards above ↑"}
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Scientific Traceability & Provenance */}

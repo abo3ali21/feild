@@ -12,7 +12,7 @@ from uuid import uuid4
 from fastapi import Body, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.calculations import precipitation_anomaly, rainfall_status
+from app.core.calculations import calculate_effective_water, precipitation_anomaly, rainfall_status
 from app.core.engine import evaluate_selected_five_crops, infer_soil_texture_from_hardware, load_crops, rank_rotations
 from app.models.schemas import EvaluationResponse, FarmRequest, SensorReadingIn, SimulationRequest
 from app.services import sensor_store
@@ -187,17 +187,31 @@ async def simulate(request: SimulationRequest):
         raise HTTPException(status_code=404, detail="Evaluation not found; run an evaluation before simulating.")
     farm_request, original = stored
     context = deepcopy(original.environmental_context)
-    context.seasonal_rainfall_mm *= 1 + request.rainfall_change_pct / 100
+    context.seasonal_rainfall_mm = round(original.environmental_context.seasonal_rainfall_mm * (1 + request.rainfall_change_pct / 100), 1)
     context.historical_rainfall_mm = original.environmental_context.historical_rainfall_mm
-    context.precipitation_anomaly_pct = precipitation_anomaly(context.seasonal_rainfall_mm, context.historical_rainfall_mm)
+    context.precipitation_anomaly_pct = round(precipitation_anomaly(context.seasonal_rainfall_mm, context.historical_rainfall_mm), 1)
     context.rainfall_status = rainfall_status(context.precipitation_anomaly_pct)
-    context.heat_stress_days = min(90, context.heat_stress_days + round(request.temperature_change_c * 6))
-    context.annual_gdd *= 1 + request.temperature_change_c * .035
+    context.heat_stress_days = min(90, original.environmental_context.heat_stress_days + round(request.temperature_change_c * 6))
+    context.annual_gdd = round(original.environmental_context.annual_gdd * (1 + request.temperature_change_c * .035), 1)
+
+    eff_irrigation = farm_request.irrigation_supply_mm if farm_request.irrigation_supply_mm is not None else (300.0 if request.irrigation_available else 0.0)
+    context.effective_water_mm = calculate_effective_water(context.seasonal_rainfall_mm, eff_irrigation)
+
+    if context.crop_gdd:
+        for cid in context.crop_gdd:
+            base_gdd = original.environmental_context.crop_gdd.get(cid, original.environmental_context.annual_gdd)
+            context.crop_gdd[cid] = round(base_gdd * (1 + request.temperature_change_c * .035), 1)
+    if context.crop_heat_stress_days:
+        for cid in context.crop_heat_stress_days:
+            base_heat = original.environmental_context.crop_heat_stress_days.get(cid, original.environmental_context.heat_stress_days)
+            context.crop_heat_stress_days[cid] = min(90, base_heat + round(request.temperature_change_c * 6))
+
     rotations, rejected = rank_rotations(
         context,
         farm_request.current_crop_id,
         request.irrigation_available,
         farm_request.farmer_priority,
+        irrigation_supply_mm=eff_irrigation if request.irrigation_available else 0.0,
         allowed_crop_ids=farm_request.selected_crop_ids,
     )
     if not rotations:
@@ -207,10 +221,10 @@ async def simulate(request: SimulationRequest):
         evaluation_id=simulated_id, environmental_context=context, data_provenance=original.data_provenance,
         recommended_rotations=rotations, rejected_examples=rejected,
     )
-    updated_req = farm_request.model_copy(update={"is_irrigated": request.irrigation_available})
-    EVALUATIONS[simulated_id] = (updated_req, response)
+    # Store (farm_request, original) under simulated_id so subsequent re-simulations preserve the baseline!
+    EVALUATIONS[simulated_id] = (farm_request, original)
     try:
-        sensor_store.save_evaluation(simulated_id, updated_req.model_dump(), response.model_dump())
+        sensor_store.save_evaluation(simulated_id, farm_request.model_dump(), original.model_dump())
     except Exception as exc:
         logger.warning("Could not persist simulated evaluation: %s", exc)
     return response
