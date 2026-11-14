@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import EVALUATIONS, app
 
 client = TestClient(app)
 
@@ -36,3 +36,22 @@ def test_simulation_reranks():
     })
     assert response.status_code == 200
     assert response.json()["environmental_context"]["seasonal_rainfall_mm"] < original["environmental_context"]["seasonal_rainfall_mm"]
+
+
+def test_evaluation_persists_across_restart():
+    original = client.post("/api/v1/farms/evaluate", json=payload("iowa")).json()
+    eval_id = original["evaluation_id"]
+
+    # Simulate server restart by clearing the in-memory cache
+    EVALUATIONS.clear()
+    assert eval_id not in EVALUATIONS
+
+    # Simulation should transparently reload the evaluation from persistent storage
+    response = client.post("/api/v1/farms/simulate", json={
+        "evaluation_id": eval_id,
+        "rainfall_change_pct": -20,
+        "temperature_change_c": 2,
+        "irrigation_available": True,
+    })
+    assert response.status_code == 200
+    assert response.json()["evaluation_id"] != eval_id

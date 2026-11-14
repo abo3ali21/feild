@@ -13,3 +13,6 @@ frontend/.sites-runtime/
 
 firmware/**/Secrets.h
 backend/sensor_readings.db
+sensor_readings.db
+*.db
+

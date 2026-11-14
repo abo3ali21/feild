@@ -2,7 +2,12 @@ import httpx
 import pytest
 
 from app.models.schemas import DataStatus, FarmRequest
-from app.services.environment import RetryingClient, fallback_for
+from app.services.environment import (
+    SHARED_CACHE,
+    RetryingClient,
+    TTLCache,
+    fallback_for,
+)
 
 
 @pytest.mark.asyncio
@@ -19,3 +24,23 @@ def test_missing_data_uses_visible_fallback():
     context, provenance = fallback_for(request)
     assert context.data_quality["climate"] == DataStatus.FALLBACK
     assert provenance[0].status == DataStatus.FALLBACK
+
+
+def test_soil_texture_manual_override_takes_precedence():
+    request = FarmRequest(
+        latitude=14.1203,
+        longitude=-16.0351,
+        current_crop_id="groundnut",
+        soil_texture_override="CLAY",
+    )
+    context, provenance = fallback_for(request)
+    assert context.soil_texture == "CLAY"
+    assert context.soil_texture_source == "OVERRIDE"
+    assert any("override" in p.source.lower() for p in provenance)
+
+
+def test_shared_cache_lifecycle():
+    cache = TTLCache(ttl_seconds=1)
+    cache.set("geo:10:20", {"data": 42})
+    assert cache.get("geo:10:20") == {"data": 42}
+    assert cache.get("non_existent") is None

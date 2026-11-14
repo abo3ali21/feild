@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 import time
@@ -73,7 +74,7 @@ def _rate_limited(device_id: str) -> bool:
 
 def _require_internal_token(token: str | None) -> None:
     expected = os.getenv("SENSOR_INTERNAL_TOKEN")
-    if not expected or token != expected:
+    if not expected or not token or not hmac.compare_digest(token, expected):
         raise HTTPException(status_code=403, detail="Valid X-Internal-Token required for sensor query endpoints")
 
 
@@ -149,6 +150,10 @@ async def evaluate_request(request: FarmRequest, evaluation_id: str | None = Non
         recommended_rotations=rotations, rejected_examples=rejected,
     )
     EVALUATIONS[identifier] = (request, response)
+    try:
+        sensor_store.save_evaluation(identifier, request.model_dump(), response.model_dump())
+    except Exception as exc:
+        logger.warning("Could not persist evaluation to disk: %s", exc)
     logger.info("evaluation_complete id=%s profile=%s rotations=%s", identifier, request.demo_profile_id or "custom", len(rotations))
     return response
 
@@ -161,6 +166,12 @@ async def evaluate(request: FarmRequest):
 @app.post("/api/v1/farms/simulate", response_model=EvaluationResponse)
 async def simulate(request: SimulationRequest):
     stored = EVALUATIONS.get(request.evaluation_id)
+    if not stored:
+        persisted = sensor_store.load_evaluation(request.evaluation_id)
+        if persisted:
+            req_dict, resp_dict = persisted
+            stored = (FarmRequest.model_validate(req_dict), EvaluationResponse.model_validate(resp_dict))
+            EVALUATIONS[request.evaluation_id] = stored
     if not stored:
         raise HTTPException(status_code=404, detail="Evaluation not found; run an evaluation before simulating.")
     farm_request, original = stored
@@ -179,5 +190,10 @@ async def simulate(request: SimulationRequest):
         evaluation_id=simulated_id, environmental_context=context, data_provenance=original.data_provenance,
         recommended_rotations=rotations, rejected_examples=rejected,
     )
-    EVALUATIONS[simulated_id] = (farm_request.model_copy(update={"is_irrigated": request.irrigation_available}), response)
+    updated_req = farm_request.model_copy(update={"is_irrigated": request.irrigation_available})
+    EVALUATIONS[simulated_id] = (updated_req, response)
+    try:
+        sensor_store.save_evaluation(simulated_id, updated_req.model_dump(), response.model_dump())
+    except Exception as exc:
+        logger.warning("Could not persist simulated evaluation: %s", exc)
     return response

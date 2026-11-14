@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import sqlite3
@@ -50,6 +51,13 @@ CREATE TABLE IF NOT EXISTS readings (
     UNIQUE(device_id, device_timestamp)
 );
 CREATE INDEX IF NOT EXISTS idx_readings_farm_time ON readings(farm_id, received_at);
+CREATE TABLE IF NOT EXISTS evaluations (
+    evaluation_id TEXT PRIMARY KEY,
+    farm_request_json TEXT NOT NULL,
+    response_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_evaluations_created_at ON evaluations(created_at);
 """
 
 
@@ -166,7 +174,7 @@ def check_credentials(device_id: str, api_key: str) -> tuple[str, sqlite3.Row | 
         device = get_device(connection, device_id)
         if device is None:
             return "unknown_device", None
-        if not device["active"] or device["api_key_hash"] != hash_api_key(api_key):
+        if not device["active"] or not hmac.compare_digest(device["api_key_hash"], hash_api_key(api_key)):
             return "unauthorized", None
         return "ok", device
     finally:
@@ -304,3 +312,32 @@ def fresh_aggregate(farm_id: str) -> dict | None:
         return aggregate
     finally:
         connection.close()
+
+
+def save_evaluation(evaluation_id: str, request_data: dict, response_data: dict) -> None:
+    connection = connect()
+    try:
+        ensure_schema(connection)
+        connection.execute(
+            "INSERT OR REPLACE INTO evaluations(evaluation_id, farm_request_json, response_json, created_at) VALUES(?, ?, ?, ?)",
+            (evaluation_id, json.dumps(request_data), json.dumps(response_data), iso(now_utc())),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def load_evaluation(evaluation_id: str) -> tuple[dict, dict] | None:
+    connection = connect()
+    try:
+        ensure_schema(connection)
+        row = connection.execute(
+            "SELECT farm_request_json, response_json FROM evaluations WHERE evaluation_id = ?",
+            (evaluation_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return json.loads(row["farm_request_json"]), json.loads(row["response_json"])
+    finally:
+        connection.close()
+
