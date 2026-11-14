@@ -1368,11 +1368,11 @@ function Results({
       />
 
       {/* Climate Scenario Stress Test Simulation */}
-      <section className="scenario-section">
+      <section className="scenario-section rounded-2xl border border-[#143626]/30 shadow-md">
         <div className="scenario-copy">
-          <span className="step-label">{t.scenario.label}</span>
-          <h2>{t.scenario.h1}</h2>
-          <p>{t.scenario.p}</p>
+          <span className="step-label text-amber-300 font-bold tracking-wider text-xs">{t.scenario.label}</span>
+          <h2 className="text-2xl sm:text-3xl font-serif font-bold text-white my-2">{t.scenario.h1}</h2>
+          <p className="text-emerald-100/80 text-xs sm:text-sm leading-relaxed">{t.scenario.p}</p>
         </div>
         <div className="scenario-controls">
           <SliderField
@@ -1391,10 +1391,10 @@ function Results({
             max={4}
             suffix="°C"
           />
-          <div className="switch-field compact" onClick={() => setIrrigated(!irrigated)}>
+          <div className="switch-field compact rounded-xl bg-white/10 border border-white/20 hover:bg-white/15 transition cursor-pointer" onClick={() => setIrrigated(!irrigated)}>
             <div>
-              <strong>{t.scenario.irrigation}</strong>
-              <small>{irrigated ? t.scenario.available : t.scenario.unavailable}</small>
+              <strong className="text-white text-xs">{t.scenario.irrigation}</strong>
+              <small className="text-emerald-200 text-[11px] block">{irrigated ? t.scenario.available : t.scenario.unavailable}</small>
             </div>
             <Switch.Root
               className="switch"
@@ -1405,8 +1405,11 @@ function Results({
               <Switch.Thumb />
             </Switch.Root>
           </div>
-          <button className="primary-action" onClick={simulate}>
-            <RefreshCw size={17} /> {t.scenario.rerun}
+          <button
+            className="w-full min-h-[46px] rounded-xl bg-white text-[#143626] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-[#F7F5EE] active:scale-98 transition shadow-md cursor-pointer border-0"
+            onClick={simulate}
+          >
+            <RefreshCw size={16} className="text-[#143626]" /> {t.scenario.rerun}
           </button>
         </div>
       </section>
@@ -1446,28 +1449,31 @@ function SliderField({
   const { lang, dir, num } = useLang();
   const show = (v: number) => (v > 0 ? "+" : "") + (lang === "ar" ? num(v) : String(v)) + suffix;
   return (
-    <label className="slider-field">
-      <span>
-        {label}
-        <b>
+    <div className="slider-field flex flex-col justify-center">
+      <span className="flex items-center justify-between text-xs font-semibold text-white mb-1.5">
+        <span>{label}</span>
+        <b className="font-mono text-emerald-300 bg-white/10 px-2 py-0.5 rounded text-xs">
           <Ltr>{show(value)}</Ltr>
         </b>
       </span>
       <Slider.Root
         dir={dir}
-        className="slider"
+        className="slider relative flex items-center select-none touch-none w-full h-7 cursor-pointer my-1"
         value={[value]}
         min={min}
         max={max}
         step={1}
         onValueChange={(v) => setValue(v[0])}
       >
-        <Slider.Track>
-          <Slider.Range />
+        <Slider.Track className="bg-white/25 relative grow rounded-full h-1.5 overflow-hidden block">
+          <Slider.Range className="absolute bg-emerald-400 h-full rounded-full block" />
         </Slider.Track>
-        <Slider.Thumb aria-label={label} />
+        <Slider.Thumb
+          className="block w-4 h-4 bg-white rounded-full shadow-md border-2 border-emerald-600 hover:scale-110 focus:outline-hidden transition-transform cursor-grab active:cursor-grabbing"
+          aria-label={label}
+        />
       </Slider.Root>
-      <small>
+      <small className="flex justify-between text-[11px] text-emerald-100/70 font-mono mt-0.5">
         <i>
           <Ltr>{(lang === "ar" ? num(min) : String(min)) + suffix}</Ltr>
         </i>
@@ -1475,7 +1481,7 @@ function SliderField({
           <Ltr>{show(max)}</Ltr>
         </i>
       </small>
-    </label>
+    </div>
   );
 }
 
