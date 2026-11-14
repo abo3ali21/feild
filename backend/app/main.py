@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from collections import deque
+from collections import OrderedDict, deque
 from copy import deepcopy
 from datetime import timedelta
 from uuid import uuid4
@@ -47,7 +47,8 @@ def profiles():
     return {"profiles": [{key: value for key, value in profile.items() if key != "context"} for profile in demo_profiles()]}
 
 
-INGEST_WINDOW: dict[str, deque[float]] = {}
+INGEST_WINDOW: OrderedDict[str, deque[float]] = OrderedDict()
+MAX_INGEST_KEYS = 10_000
 
 
 def _rate_limited(device_id: str) -> bool:
@@ -55,12 +56,18 @@ def _rate_limited(device_id: str) -> bool:
         limit = max(1, int(os.getenv("SENSOR_RATE_LIMIT_PER_MINUTE", "10")))
     except ValueError:
         limit = 10
-    events = INGEST_WINDOW.setdefault(device_id, deque())
-    while events and events[0] < time.monotonic() - 60:
+    now = time.monotonic()
+    cutoff = now - 60
+    events = INGEST_WINDOW.pop(device_id, deque())
+    while events and events[0] < cutoff:
         events.popleft()
     if len(events) >= limit:
+        INGEST_WINDOW[device_id] = events
         return True
-    events.append(time.monotonic())
+    events.append(now)
+    INGEST_WINDOW[device_id] = events
+    while len(INGEST_WINDOW) > MAX_INGEST_KEYS:
+        INGEST_WINDOW.popitem(last=False)
     return False
 
 
@@ -80,8 +87,6 @@ async def ingest_sensor_reading(
         raise HTTPException(status_code=401, detail="X-Device-Id and X-Device-Key headers are required")
     if reading.device_id != x_device_id:
         raise HTTPException(status_code=403, detail="Payload device_id does not match authenticated device")
-    if _rate_limited(x_device_id):
-        raise HTTPException(status_code=429, detail="Device submission rate limit exceeded")
     status, device = sensor_store.check_credentials(x_device_id, x_device_key)
     if status == "unknown_device":
         logger.warning("sensor_ingest_rejected reason=unknown_device device=%s", x_device_id)
@@ -89,6 +94,8 @@ async def ingest_sensor_reading(
     if status != "ok":
         logger.warning("sensor_ingest_reason=unauthorized device=%s", x_device_id)
         raise HTTPException(status_code=401, detail="Device authentication failed")
+    if _rate_limited(x_device_id):
+        raise HTTPException(status_code=429, detail="Device submission rate limit exceeded")
     moment = sensor_store.parse_timestamp(reading.device_timestamp.isoformat())
     now = sensor_store.now_utc()
     if moment > now + timedelta(minutes=15):

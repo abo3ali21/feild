@@ -24,8 +24,9 @@ SETUP = {
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("SENSOR_DB_PATH", str(tmp_path / "sensors.db"))
-    (tmp_path / "setup.json").write_text(json.dumps(SETUP))
-    monkeypatch.setenv("SENSOR_SETUP_PATH", str(tmp_path / "setup.json"))
+    setup_path = tmp_path / "setup.json"
+    setup_path.write_text(json.dumps(SETUP))
+    monkeypatch.setenv("SENSOR_SETUP_PATH", str(setup_path))
     monkeypatch.setenv("SENSOR_INTERNAL_TOKEN", "internal")
     monkeypatch.delenv("DEMO_MODE", raising=False)
     main_module.INGEST_WINDOW.clear()
@@ -160,6 +161,25 @@ def test_rate_limit(client, monkeypatch):
     assert results[2].status_code == 429
 
 
+def test_invalid_credentials_do_not_consume_authenticated_rate_limit(client, monkeypatch):
+    monkeypatch.setenv("SENSOR_RATE_LIMIT_PER_MINUTE", "1")
+    timestamp = sensor_store.iso(sensor_store.now_utc())
+    invalid = submit(client, payload(timestamp=timestamp), key="wrong")
+    valid = submit(client, payload(timestamp=timestamp))
+    assert invalid.status_code == 401
+    assert valid.status_code == 200
+
+
+def test_rate_limiter_bounds_untrusted_device_keys(client):
+    main_module.MAX_INGEST_KEYS = 10
+    try:
+        for index in range(25):
+            main_module._rate_limited(f"untrusted-{index}")
+        assert len(main_module.INGEST_WINDOW) <= 10
+    finally:
+        main_module.MAX_INGEST_KEYS = 10_000
+
+
 def test_device_farm_association_is_backend_managed(client):
     response = submit(client, payload())
     assert response.json()["farm_id"] == "farm-a"
@@ -174,3 +194,34 @@ def test_moisture_calibration_index(client):
     assert sensor_store.moisture_percent(3000, 1500, 2500) == 0.0
     assert sensor_store.moisture_percent(1000, 1500, 2500) == 100.0
     assert sensor_store.moisture_percent(1000, 2500, 2500) is None
+
+
+def test_setup_duplicate_coordinates_are_rejected_before_sync(client, tmp_path):
+    setup_path = tmp_path / "setup.json"
+    setup_path.write_text(json.dumps({
+        "farms": [
+            {"farm_id": "farm-a", "latitude": 14.1201, "longitude": -16.0351},
+            {"farm_id": "farm-b", "latitude": 14.1204, "longitude": -16.0354},
+        ],
+        "devices": [],
+    }))
+    connection = sensor_store.connect()
+    try:
+        with pytest.raises(ValueError, match="duplicate farm coordinates"):
+            sensor_store.sync_setup(connection)
+    finally:
+        connection.close()
+
+
+def test_setup_rejects_devices_with_unknown_farm(client, tmp_path):
+    setup_path = tmp_path / "setup.json"
+    setup_path.write_text(json.dumps({
+        "farms": [{"farm_id": "farm-a", "latitude": 14.120, "longitude": -16.035}],
+        "devices": [{"device_id": "orphan", "farm_id": "missing", "api_key": "secret"}],
+    }))
+    connection = sensor_store.connect()
+    try:
+        with pytest.raises(ValueError, match="unregistered farms"):
+            sensor_store.sync_setup(connection)
+    finally:
+        connection.close()

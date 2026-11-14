@@ -1,209 +1,95 @@
 # Field Shift: Adapting Farms with NASA Data
 
-Field Shift is a hackathon-ready decision-support application for agricultural extension workers and rainfed farmers. It compares deterministic, three-year crop rotations against regional climate evidence, estimated soil conditions, crop-family breaks, and an explicit multi-criteria scoring model. It does **not** predict yield and does not use an LLM to calculate recommendations.
+Field Shift is a transparent decision-support application for comparing three-year crop rotations against regional climate evidence, estimated soil conditions, crop-family breaks, and a deterministic multi-criteria scoring model. It does not predict yield.
 
 ## Architecture
 
-~~~mermaid
-flowchart LR
-  U[Extension worker / farmer] --> N[Next.js frontend]
-  N --> F[FastAPI backend]
-  F --> P[NASA POWER adapter]
-  F --> S[ISRIC SoilGrids adapter]
-  F -. optional .-> M[SMAP adapter]
-  D2[(ESP32 field sensors)] --> F
-  F --> C[Crop knowledge base]
-  F --> E[Hard filters + MCDA engine]
-  F --> D[(TTL cache / optional PostGIS)]
-  E --> F --> N
-~~~
+- `frontend/`: Next.js/TypeScript planning workflow.
+- `backend/`: FastAPI API, environmental adapters, deterministic ranking engine, and sensor integration.
+- `firmware/field_shift_esp32/`: ESP32 firmware for local sensor readings and authenticated uploads.
+- `hardware/`: notes and source sketches for the original sensor hardware.
 
-The frontend is a responsive Next.js/TypeScript planning workflow with five demo farms, clear loading stages, ranked and comparison views, a methodology dialog, and scenario sliders. The backend is a Python/FastAPI service with pure calculations, configurable JSON crop data, resilient HTTP adapters, deterministic ranking, and in-memory evaluation state for simulations.
+## Local setup (Windows PowerShell)
 
-## Data sources and status
+Requirements: Node.js 22+, Python 3.12+, and npm.
 
-- **NASA POWER**: daily T2M maximum/minimum, corrected precipitation, humidity, and solar radiation. Live requests use four recent complete years and a 180-day seasonal window.
-- **ISRIC SoilGrids**: 0–30 cm clay, sand, silt, pH, and soil organic carbon estimates.
-- **SMAP**: adapter boundary only. Root-zone moisture is marked UNAVAILABLE; the app never invents a live SMAP measurement. Registered ESP32 field devices can supply labelled SENSOR moisture instead (see sensor integration).
-- **Demo fallback**: five regional tendency profiles. Fallback and estimated data are always visibly labelled.
+From the repository root:
 
-Crop thresholds are configurable MVP reference parameters with notes. They must be calibrated with local agronomic expertise before operational use.
+```powershell
+Copy-Item .env.example .env
+```
 
-## Local setup
+Start the backend in one terminal:
 
-Requirements: Node.js 22+, Python 3.12+, and npm or pnpm.
-
-~~~bash
-cp .env.example .env
-
+```powershell
 cd backend
-python3.12 -m venv .venv
-source .venv/bin/activate
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
-~~~
+```
 
-In another terminal:
+Start the frontend in another terminal:
 
-~~~bash
+```powershell
 cd frontend
 npm ci
 npm run dev
-~~~
+```
 
-Open http://localhost:3000. The frontend automatically activates its labelled demonstration fallback if the backend cannot be reached.
+Open http://localhost:3000. The root `.env` is for local reference; the backend reads environment variables from its process, and Next.js reads frontend variables at build time. If not using a dotenv loader, set variables in each terminal before starting the corresponding service. By default, the frontend uses same-origin `/api` calls; set `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000` if developing without the Vercel local proxy configuration.
 
-For containers:
+## Deploy frontend and backend to Vercel
 
-~~~bash
-docker compose up --build
-~~~
+This repository has a root `vercel.json` configured for Vercel Services: Next.js at `/` and FastAPI mounted under `/api`. Vercel Services availability may depend on your account/plan and is subject to the platform's current beta/rollout status. Check your Vercel dashboard supports Services before using this deployment shape.
 
-## Environment variables
+1. Push the repository to GitHub/GitLab/Bitbucket and import it into Vercel.
+2. Keep the Vercel project root directory set to the repository root (do not set it to `frontend/`); the root `vercel.json` defines both services.
+3. Set the project's environment variables in **Settings → Environment Variables**:
+   - `DEMO_MODE=false` for Production; use `true` for Preview if you want only demo data.
+   - `CORS_ORIGINS` to the exact Vercel site origin, for example `https://your-project.vercel.app` (no trailing slash). If you use a custom domain, include that origin too, comma-separated.
+   - `SENSOR_INTERNAL_TOKEN` only if internal sensor query endpoints are used. Generate a long random secret and do not prefix it with `NEXT_PUBLIC_`.
+   - `SENSOR_SETUP_PATH` / `SENSOR_DB_PATH` are not durable storage on serverless functions. Do not rely on local files or SQLite for production sensor persistence; configure durable external storage before enabling real sensor ingestion.
+4. Do not set `NEXT_PUBLIC_API_BASE_URL` for the combined deployment. The frontend uses same-origin requests to `/api/v1/...`; Vercel routes those to the backend service.
+5. Deploy, then verify `https://your-project.vercel.app/api/v1/health` and the frontend homepage. Test `/api/v1/demo-profiles` and a farm evaluation as well.
+6. After adding or changing variables in Vercel, redeploy so build-time frontend settings and backend settings take effect.
 
-| Variable | Purpose | Default |
+The frontend and backend share one Vercel origin in this setup, so CORS is generally not needed for browser API calls. Keep `CORS_ORIGINS` restricted to the actual site origin for any cross-origin clients.
+
+**Persistence limitation:** `EVALUATIONS`, the sensor limiter, TTL cache, SQLite, and sensor setup file are process-local or filesystem-backed. Vercel Functions may scale and recycle instances, so the current API is not production-ready for persistent sensor readings or reliable simulation across separate invocations. A persistent database/shared state service is needed for those use cases. If Vercel Services is unavailable for your account, deploy the frontend and backend as separate Vercel projects (frontend root `frontend/`, backend root `backend/` with a FastAPI entrypoint) and set the frontend's `NEXT_PUBLIC_API_BASE_URL` to the backend's public URL; configure backend `CORS_ORIGINS` to the frontend origin.
+
+For current setup/deployment details, see [Vercel Services](https://vercel.com/docs/services), [Services routing](https://vercel.com/docs/services/routing), and [FastAPI on Vercel](https://vercel.com/docs/frameworks/backend/fastapi).
+
+## Local environment variables
+
+| Variable | Purpose | Local default |
 | --- | --- | --- |
-| NEXT_PUBLIC_API_BASE_URL | Browser-visible FastAPI base URL | http://localhost:8000 |
-| NEXT_PUBLIC_MAPBOX_TOKEN | Reserved for an optional Mapbox implementation | blank |
-| DATABASE_URL | Reserved for PostgreSQL/PostGIS persistence | blank; bundled JSON/in-memory fallback |
-| NASA_EARTHDATA_TOKEN | Reserved for an authenticated SMAP adapter | blank |
-| SENSOR_DB_PATH | SQLite file for persistent device registry and readings | ./sensor_readings.db (backend working dir) |
-| SENSOR_SETUP_PATH | Backend-managed device/farm association JSON | backend/app/data/sensor_setup.json |
-| SENSOR_INTERNAL_TOKEN | X-Internal-Token value for the sensor query endpoints | blank; sensor query endpoints reject all requests when unset |
-| SENSOR_MAX_AGE_HOURS | Data-freshness window for using readings in scoring | 24 |
-| SENSOR_WATER_INFLUENCE | Maximum bounded ± effect of fresh calibrated soil moisture on the water score; 0 disables | 0.10 |
-| SENSOR_RATE_LIMIT_PER_MINUTE | Per-device ingestion rate limit | 10 |
-| DEMO_MODE | Skip external requests and use explicit demo estimates | true |
-| CORS_ORIGINS | Comma-separated allowed frontend origins | http://localhost:3000 |
+| `NEXT_PUBLIC_API_BASE_URL` | API base URL used by the browser; blank uses same-origin `/api` | blank |
+| `DEMO_MODE` | Skip external data calls and use clearly labelled demo estimates | `true` |
+| `CORS_ORIGINS` | Comma-separated allowed frontend origins | `http://localhost:3000` |
+| `SENSOR_DB_PATH` | SQLite path for local sensor readings | `./sensor_readings.db` |
+| `SENSOR_SETUP_PATH` | Device/farm association JSON | `backend/app/data/sensor_setup.json` |
+| `SENSOR_INTERNAL_TOKEN` | Secret for internal sensor query routes | unset; query routes reject requests |
+| `SENSOR_MAX_AGE_HOURS` | Freshness window for sensor scoring | `24` |
+| `SENSOR_WATER_INFLUENCE` | Bounded soil-moisture effect on water score; `0` disables | `0.10` |
+| `SENSOR_RATE_LIMIT_PER_MINUTE` | Per-device submission limit in this process | `10` |
 
-No private credential is required for the demo. Never commit real values.
+Never commit real credentials. `.env` is git-ignored; configure production secrets in Vercel's dashboard.
 
 ## API
 
-- GET /api/v1/health — service health and deterministic-engine status.
-- GET /api/v1/crops — all 15 crop reference records.
-- GET /api/v1/demo-profiles — selectable demo farm metadata.
-- POST /api/v1/farms/evaluate — validate a farm, build environmental context, filter candidates, and return the top three materially different rotations.
-- POST /api/v1/farms/simulate — re-run an evaluation with rainfall (-40% to +20%), warming (0°C to +4°C), and irrigation changes.
-- POST /api/v1/sensors/readings — authenticated ESP32 submission (`X-Device-Id`, `X-Device-Key`); the backend resolves the registered farm.
-- GET /api/v1/sensors/{farm_id}/latest — most recent reading per registered device (internal; requires `X-Internal-Token`).
-- GET /api/v1/sensors/{farm_id}/history — historical readings within `?hours=` (internal; requires `X-Internal-Token`).
-- GET /api/v1/sensors/{farm_id}/status — device freshness against the configured window (internal; requires `X-Internal-Token`).
+- `GET /api/v1/health`
+- `GET /api/v1/crops`
+- `GET /api/v1/demo-profiles`
+- `POST /api/v1/farms/evaluate`
+- `POST /api/v1/farms/simulate`
+- `POST /api/v1/sensors/readings`
+- `GET /api/v1/sensors/{farm_id}/latest`
+- `GET /api/v1/sensors/{farm_id}/history`
+- `GET /api/v1/sensors/{farm_id}/status`
 
-## ESP32 field-sensor integration
+Interactive API documentation is available at `/docs` when the backend is running.
 
-The application workflow is unchanged: the same four-step wizard and results view are served by the same endpoints. When the analysis request coordinates match a registered sensor farm, the backend automatically overlays eligible readings inside the existing pipeline before scoring. Users never enter device identifiers, and no sensor page or control exists in the UI.
+## Method and limitations
 
-### Hardware
-
-Verified from the source sketches in `Nasa-Luxor-HAMADA-Yl3AB-2025-main.zip`:
-
-| Component | Interface | Data |
-| --- | --- | --- |
-| BME680 | I²C address 0x77 (`Wire`, standard ESP32 SDA/SCL) | Air temperature °C, relative humidity %, pressure Pa (sent as hPa), gas resistance Ω |
-| Soil moisture analog probe | GPIO32 (`analogRead`, 12-bit ADC 0–4095) | Raw ADC value |
-| SSD1306 OLED | Hardware I²C (U8g2 page-buffer mode) | Local display, unchanged from the original firmware |
-
-Firmware lives in `firmware/field_shift_esp32/`. Copy `Secrets.example.h` to `Secrets.h` (git-ignored) and set `WIFI_SSID`, `WIFI_PASSWORD`, `API_BASE_URL`, `DEVICE_ID`, and `DEVICE_KEY`. Configurable timing constants: `MEASUREMENT_INTERVAL_MS` (default 2000, the original OLED cadence), `UPLOAD_INTERVAL_MS` (default 900000), and retry backoff `RETRY_BASE_MS`/`RETRY_MAX_MS` (5 s exponential to a 5-minute ceiling). The measurement loop and OLED rendering never wait on the network; failed uploads re-send the latest snapshot with backoff, Wi-Fi reconnects non-blockingly, and `device_timestamp` comes from NTP (uploads pause until the clock is synced rather than fabricating timestamps).
-
-### Device registration and farm association
-
-The backend owns the `device_id → farm_id` mapping in `backend/app/data/sensor_setup.json` (override with `SENSOR_SETUP_PATH`). Add a farm entry with its coordinates and a device entry with its unique id and api key; edit the file to move a device to another farm — changes apply on the next ingestion call. Device keys are stored only as SHA-256 hashes in the SQLite registry (`SENSOR_DB_PATH`); unknown, inactive, or wrong-key devices are rejected with 401, and a payload can never claim another device's id. The committed file contains placeholders only — keep real secrets out of git.
-
-### Reading payload
-
-~~~json
-{
-  "device_id": "esp32-device-001",
-  "temperature_c": 29.5,
-  "humidity_percent": 55.0,
-  "pressure_hpa": 1008.2,
-  "gas_resistance_ohms": 12500,
-  "soil_moisture_raw": 1850,
-  "device_timestamp": "2026-11-12T12:30:00Z"
-}
-~~~
-
-Missing channels are allowed (sensor disconnected), impossible values are rejected (422), exact `(device_id, device_timestamp)` replays are acknowledged as duplicates without a second row, and delayed or out-of-order submissions are ranked by device timestamp for retrieval while server-side `received_at` drives freshness.
-
-### Sensor-to-model rules and calibration assumptions
-
-- **Soil moisture** is the only measurement that affects scores. Raw ADC values are converted with the firmware's own two-point thresholds (WET 1500 / DRY 2500, configurable per device in the registry) into a **device-relative moisture index**, not a volumetric water-content percentage. Median aggregation over the freshness window reduces noise, and three-plus identical raw values are flagged as a stuck sensor and excluded. When eligible, the index applies a bounded ±`SENSOR_WATER_INFLUENCE` (default ±10%) correction to the existing water dimension only; MCDA goal weights, hard filters, climate and soil scoring, and irrigation answers are untouched. Until field-specific volumetric calibration exists, no stronger claim is made.
-- **Temperature, humidity, pressure, gas resistance** are stored and validated but never scored: an instantaneous reading cannot replace the 4-year NASA POWER seasonal profile, and the model has no validated humidity/pressure/gas pathway. Gas resistance needs factory calibration and VOC interpretation; pressure is weather-scale noise at this use. They remain available through the history endpoints for future trend analysis.
-- When no device is registered, offline, stale (older than `SENSOR_MAX_AGE_HOURS`, default 24 h — an operational freshness bound, not an agronomic standard), or uncalibrated, the engine uses the original data sources exactly as before. Missing data is never treated as zero and an analysis is never rejected because a device is offline.
-
-### Sensor testing
-
-~~~bash
-cd backend
-pytest tests/test_sensors.py tests/test_sensor_engine.py -q
-~~~
-
-These are simulated-payload tests over the HTTP API; they do not prove behavior of a physical ESP32. The firmware has not been compiled or bench-tested in this environment (no Arduino toolchain or device present).
-
-Interactive OpenAPI documentation is available at http://localhost:8000/docs.
-
-## Deterministic methodology
-
-1. Climate and soil adapters return live, cached, estimated, unavailable, or fallback status.
-2. Hard filters remove crops that fail minimum seasonal GDD, material pH tolerance, critical rainfed water, irrigation dependence, extreme repeated heat, or crop-family break rules.
-3. Candidate three-year permutations prohibit adjacent/repeated families inside configured break intervals.
-4. Each viable sequence receives normalized climate, water, soil, and diversity scores in [0, 1].
-5. Preset MCDA weights produce an overall score displayed as 0–100.
-
-~~~text
-overall = climate_weight × climate_score
-        + water_weight × water_score
-        + soil_weight × soil_score
-        + diversity_weight × diversity_score
-~~~
-
-Water scoring combines normalized rainfall fit, anomaly, irrigation, drought tolerance, and texture factors; it never adds volumetric soil moisture directly to rainfall millimetres. Stable tie-breaking makes rankings reproducible.
-
-## Demo profiles
-
-Choose a profile in the first step and continue through conditions, goal, and review:
-
-1. Semi-Arid Sahel, Senegal
-2. Iowa Corn Belt, USA
-3. Punjab / Indus Basin, Pakistan
-4. Andean smallholder, Peru
-5. Western Australian Wheat Belt
-
-Profiles store regional tendencies, not fixed winners. In demo mode, both the API and browser fallback label output as demonstration or estimated data.
-
-## Tests and checks
-
-~~~bash
-cd backend
-pytest -q
-
-cd ../frontend
-npm run lint
-npx tsc --noEmit
-npm run build
-~~~
-
-The suite covers GDD, rainfall anomaly, weight normalization, pH and family filtering, water and score bounds, stable ranking, fallbacks, external timeouts, all five demos, all required API workflows, and ESP32 sensor ingestion, calibration, freshness, isolation, and scoring behavior.
-
-## Deployment
-
-- **Frontend**: import frontend/ into Vercel and set NEXT_PUBLIC_API_BASE_URL to the public API origin.
-- **Backend**: deploy backend/ as a Docker service on Render or Fly.io. Set DEMO_MODE=false, configure exact CORS_ORIGINS, and use /api/v1/health as the health check.
-- **Combined local demo**: use Docker Compose.
-
-Logs contain evaluation IDs and profile labels, not farm secrets. External clients use bounded timeouts, schema checks, and exponential backoff.
-
-## Known limitations
-
-- A generic 180-day season is used until crop calendars are made location-aware.
-- SoilGrids and NASA POWER are regional estimates and may miss field-scale drainage or microclimate.
-- Simulation warms the existing seasonal context; it is not a future daily weather forecast.
-- Evaluation state and cache are process-local in the MVP. Configure PostgreSQL/PostGIS and a shared cache for multi-instance production.
-- Market prices, pest outbreaks, field boundaries, exact fertilizer prescriptions, and yield prediction are out of scope.
-
-## Responsible use
-
-> Field Shift provides comparative decision support based on regional satellite observations and configurable agronomic rules. Verify recommendations with local extension guidance, field observations, seed availability, and soil testing before planting.
-
-The interface never claims guaranteed yield increases, exact future yields, exact fertilizer prescriptions, professional certification, or field-level precision from coarse observations.
+The engine filters crops using configurable heat, water, pH, irrigation, and family-break criteria. It scores viable three-year rotations across climate, water, soil, and diversity dimensions with transparent preset weights. Reference crop thresholds require local agronomic calibration. NASA POWER and SoilGrids are regional estimates; demo/fallback data is visibly labelled. The application is comparative decision support, not a yield forecast or substitute for local extension advice.

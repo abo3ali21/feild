@@ -112,25 +112,40 @@ def sync_setup(connection: sqlite3.Connection) -> None:
     if not config.exists():
         return
     document = json.loads(config.read_text())
+    farms = document.get("farms", [])
+    coordinate_keys = [coord_key(farm["latitude"], farm["longitude"]) for farm in farms]
+    if len(coordinate_keys) != len(set(coordinate_keys)):
+        raise ValueError("Sensor setup contains duplicate farm coordinates at three-decimal precision")
+    farm_ids = {farm["farm_id"] for farm in farms}
+    unknown_farms = sorted({device["farm_id"] for device in document.get("devices", [])} - farm_ids)
+    if unknown_farms:
+        raise ValueError(f"Sensor setup references unregistered farms: {', '.join(unknown_farms)}")
+    connection.execute("SAVEPOINT sensor_setup_sync")
     registered_at = iso(now_utc())
-    for farm in document.get("farms", []):
-        connection.execute(
-            "INSERT INTO farms(farm_id, latitude, longitude, coord_key) VALUES(?,?,?,?) "
-            "ON CONFLICT(farm_id) DO UPDATE SET latitude=excluded.latitude, longitude=excluded.longitude, coord_key=excluded.coord_key",
-            (farm["farm_id"], farm["latitude"], farm["longitude"], coord_key(farm["latitude"], farm["longitude"])),
-        )
-    for device in document.get("devices", []):
-        connection.execute(
-            "INSERT INTO devices(device_id, farm_id, api_key_hash, active, soil_wet_adc, soil_dry_adc, planted_depth_cm, calibration_source, registered_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(device_id) DO UPDATE SET farm_id=excluded.farm_id, api_key_hash=excluded.api_key_hash, "
-            "active=excluded.active, soil_wet_adc=excluded.soil_wet_adc, soil_dry_adc=excluded.soil_dry_adc, planted_depth_cm=excluded.planted_depth_cm, calibration_source=excluded.calibration_source",
-            (
-                device["device_id"], device["farm_id"], hash_api_key(device["api_key"]), int(device.get("active", 1)),
-                int(device.get("soil_wet_adc", DEFAULT_SOIL_WET_ADC)), int(device.get("soil_dry_adc", DEFAULT_SOIL_DRY_ADC)),
-                device.get("planted_depth_cm"), device.get("calibration_source"), registered_at,
-            ),
-        )
-    connection.commit()
+    try:
+        for farm in farms:
+            connection.execute(
+                "INSERT INTO farms(farm_id, latitude, longitude, coord_key) VALUES(?,?,?,?) "
+                "ON CONFLICT(farm_id) DO UPDATE SET latitude=excluded.latitude, longitude=excluded.longitude, coord_key=excluded.coord_key",
+                (farm["farm_id"], farm["latitude"], farm["longitude"], coord_key(farm["latitude"], farm["longitude"])),
+            )
+        for device in document.get("devices", []):
+            connection.execute(
+                "INSERT INTO devices(device_id, farm_id, api_key_hash, active, soil_wet_adc, soil_dry_adc, planted_depth_cm, calibration_source, registered_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(device_id) DO UPDATE SET farm_id=excluded.farm_id, api_key_hash=excluded.api_key_hash, "
+                "active=excluded.active, soil_wet_adc=excluded.soil_wet_adc, soil_dry_adc=excluded.soil_dry_adc, planted_depth_cm=excluded.planted_depth_cm, calibration_source=excluded.calibration_source",
+                (
+                    device["device_id"], device["farm_id"], hash_api_key(device["api_key"]), int(device.get("active", 1)),
+                    int(device.get("soil_wet_adc", DEFAULT_SOIL_WET_ADC)), int(device.get("soil_dry_adc", DEFAULT_SOIL_DRY_ADC)),
+                    device.get("planted_depth_cm"), device.get("calibration_source"), registered_at,
+                ),
+            )
+        connection.execute("RELEASE SAVEPOINT sensor_setup_sync")
+        connection.commit()
+    except Exception:
+        connection.execute("ROLLBACK TO SAVEPOINT sensor_setup_sync")
+        connection.execute("RELEASE SAVEPOINT sensor_setup_sync")
+        raise
 
 
 def get_device(connection: sqlite3.Connection, device_id: str) -> sqlite3.Row | None:
