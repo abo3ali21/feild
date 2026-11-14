@@ -1,6 +1,6 @@
-# Field Shift ESP32 Firmware & Hardware Guide
+# Agri Rotation ESP32 Firmware & Hardware Guide
 
-This directory contains the edge telemetry firmware for the Field Shift agricultural decision-support platform. It captures in-situ microclimate and soil conditions and transmits authenticated measurements to the Field Shift backend.
+This directory contains the edge telemetry firmware for the **Agri Rotation (أجري روتيشن)** agricultural decision-support platform. It captures in-situ microclimate and soil conditions and transmits authenticated measurements to the Agri Rotation backend.
 
 ---
 

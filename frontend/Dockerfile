@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Field Shift Next.js Frontend
+# Multi-stage Dockerfile for Agri Rotation Next.js Frontend
 FROM node:20-alpine AS base
 
 WORKDIR /app

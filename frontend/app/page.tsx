@@ -612,7 +612,7 @@ function Header({
         <span className="brand-mark">
           <Sprout size={20} />
         </span>
-        <span>Field Shift</span>
+        <span>{lang === "ar" ? "أجري روتيشن" : "Agri Rotation"}</span>
       </button>
       <nav aria-label={t.nav.primary} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         <button onClick={onMethod} className={pillStyle}>

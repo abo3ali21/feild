@@ -20,10 +20,10 @@ from app.services.environment import build_context, demo_profiles
 from app.services.sensor_context import apply_sensor_context
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s %(message)s")
-logger = logging.getLogger("field_shift")
+logger = logging.getLogger("agri_rotation")
 
 app = FastAPI(
-    title="Field Shift API",
+    title="Agri Rotation API",
     version="0.1.0",
     description="Transparent, deterministic climate-resilient crop rotation decision support.",
 )
@@ -35,7 +35,7 @@ EVALUATIONS: dict[str, tuple[FarmRequest, EvaluationResponse]] = {}
 
 @app.get("/api/v1/health")
 def health():
-    return {"status": "ok", "service": "field-shift-api", "engine": "deterministic"}
+    return {"status": "ok", "service": "agri-rotation-api", "engine": "deterministic"}
 
 
 @app.get("/api/v1/crops")

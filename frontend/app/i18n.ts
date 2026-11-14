@@ -106,9 +106,9 @@ export const DEMO_LABELS: Record<string, { name: string; country: string; system
 };
 
 export const en = {
-  meta: { title: "Field Shift — Climate-resilient crop rotations", description: "Compare three-year crop strategies using NASA climate records, estimated soil conditions, and transparent agronomic rules." },
+  meta: { title: "Agri Rotation — Climate-resilient crop rotations", description: "Compare three-year crop strategies using NASA climate records, estimated soil conditions, and transparent agronomic rules." },
   toggle: { label: "العربية", aria: "Switch to Arabic" },
-  nav: { method: "Method", sources: "Data sources", ready: "Analysis ready", demoSafe: "Demo-safe", home: "Field Shift home", primary: "Primary navigation" },
+  nav: { method: "Method", sources: "Data sources", ready: "Analysis ready", demoSafe: "Demo-safe", home: "Agri Rotation home", primary: "Primary navigation" },
   hero: {
     eyebrow: "NASA-powered decision support",
     h1: "Build crop rotations for a changing climate.",
@@ -154,14 +154,14 @@ export const en = {
   },
   loading: {
     label: "Regional analysis", h1: "Comparing viable rotations",
-    p: "No model is predicting yield. Field Shift is testing transparent crop rules against the available regional evidence.",
+    p: "No model is predicting yield. Agri Rotation is testing transparent crop rules against the available regional evidence.",
     stages: ["Reading regional climate history", "Estimating soil conditions", "Testing crop suitability", "Comparing rotation strategies"],
   },
   results: {
     h1: "Three strategies worth considering.",
     p: "Ranked against the selected goal and current regional evidence. Scores are comparative, not yield estimates.",
     dataStatus: "Data status",
-    apiConnected: "Connected to the Field Shift API.",
+    apiConnected: "Connected to the Agri Rotation API.",
     apiFallback: "Demonstration estimate — the live API was unavailable or demo mode is active.",
     scenarioApi: "Scenario re-run by the deterministic API engine.",
     scenarioMock: "Scenario calculated with the bundled deterministic demonstration profile.",
@@ -188,10 +188,10 @@ export const en = {
   },
   responsible: {
     title: "Responsible use",
-    p: "Field Shift provides comparative decision support based on regional satellite observations and configurable agronomic rules. Verify recommendations with local extension guidance, field observations, seed availability, and soil testing before planting.",
+    p: "Agri Rotation provides comparative decision support based on regional satellite observations and configurable agronomic rules. Verify recommendations with local extension guidance, field observations, seed availability, and soil testing before planting.",
   },
   method: {
-    close: "Close", label: "Methodology", title: "How Field Shift ranks a rotation",
+    close: "Close", label: "Methodology", title: "How Agri Rotation ranks a rotation",
     description: "Every result comes from explicit rules and normalized scores. No LLM or yield-prediction model changes the ranking.",
     steps: [
       { title: "Observe", text: "NASA POWER climate history and SoilGrids estimates establish regional context." },
@@ -200,7 +200,7 @@ export const en = {
       { title: "Explain", text: "The top three materially different strategies show factors, provenance and uncertainty." },
     ],
     formula: "overall = climate × weight + water × weight + soil × weight + diversity × weight",
-    limit: "Field Shift cannot determine field drainage, local pest pressure, cultivar performance, future daily weather, seed availability, or exact fertilizer needs.",
+    limit: "Agri Rotation cannot determine field drainage, local pest pressure, cultivar performance, future daily weather, seed availability, or exact fertilizer needs.",
   },
   mock: {
     explain1: (crop: string) => `${crop} is comparatively well matched to the regional heat and water profile.`,
@@ -210,9 +210,9 @@ export const en = {
 };
 
 export const ar: typeof en = {
-  meta: { title: "فيلد شيفت — دورات زراعية قادرة على التكيف مع المناخ", description: "قارن استراتيجيات ثلاثية السنوات باستخدام السجلات المناخية من ناسا وتقديرات حالة التربة وقواعد زراعية شفافة." },
+  meta: { title: "أجري روتيشن — دورات زراعية قادرة على التكيف مع المناخ", description: "قارن استراتيجيات ثلاثية السنوات باستخدام السجلات المناخية من ناسا وتقديرات حالة التربة وقواعد زراعية شفافة." },
   toggle: { label: "English", aria: "التبديل إلى الإنجليزية" },
-  nav: { method: "المنهجية", sources: "مصادر البيانات", ready: "التحليل جاهز", demoSafe: "وضع العرض", home: "الصفحة الرئيسية — فيلد شيفت", primary: "التنقل الرئيسي" },
+  nav: { method: "المنهجية", sources: "مصادر البيانات", ready: "التحليل جاهز", demoSafe: "وضع العرض", home: "الصفحة الرئيسية — أجري روتيشن", primary: "التنقل الرئيسي" },
   hero: {
     eyebrow: "دعم قرارات مدعوم ببيانات ناسا",
     h1: "ابنِ دورات زراعية تتكيّف مع المناخ المتغير.",
@@ -258,14 +258,14 @@ export const ar: typeof en = {
   },
   loading: {
     label: "تحليل إقليمي", h1: "جارٍ مقارنة الدورات القابلة للتطبيق",
-    p: "لا يتنبأ أي نموذج بالمحصول. يقوم فيلد شيفت باختبار قواعد محاصيل شفافة مقابل الأدلة الإقليمية المتاحة.",
+    p: "لا يتنبأ أي نموذج بالمحصول. يقوم أجري روتيشن باختبار قواعد محاصيل شفافة مقابل الأدلة الإقليمية المتاحة.",
     stages: ["قراءة التاريخ المناخي الإقليمي", "تقدير حالة التربة", "فحص ملاءمة المحاصيل", "مقارنة استراتيجيات الدوران"],
   },
   results: {
     h1: "ثلاث استراتيجيات جديرة بالاعتبار.",
     p: "مرتبة وفق الهدف المختار والأدلة الإقليمية الحالية. الدرجات مقارنة وليست تقديرًا للمحصول.",
     dataStatus: "حالة البيانات",
-    apiConnected: "تم الاتصال بواجهة فيلد شيفت البرمجية.",
+    apiConnected: "تم الاتصال بواجهة أجري روتيشن البرمجية.",
     apiFallback: "تقدير توضيحي — لم تكن الواجهة المباشرة متاحة أو وضع العرض مفعّل.",
     scenarioApi: "أُعيد تشغيل السيناريو بواسطة محرك الواجهة الحتمي.",
     scenarioMock: "حُسب السيناريو بملف العرض التوضيحي الحتمي المضمّن.",
@@ -292,10 +292,10 @@ export const ar: typeof en = {
   },
   responsible: {
     title: "الاستخدام المسؤول",
-    p: "يقدّم فيلد شيفت دعمًا مقارنًا للقرارات بناءً على مرئيات إقليمية من الأقمار الصناعية وقواعد زراعية قابلة للضبط. تحقق من التوصيات مع الإرشاد المحلي وملاحظات الحقل وتوفر البذور وتحليل التربة قبل الزراعة.",
+    p: "يقدّم أجري روتيشن دعمًا مقارنًا للقرارات بناءً على مرئيات إقليمية من الأقمار الصناعية وقواعد زراعية قابلة للضبط. تحقق من التوصيات مع الإرشاد المحلي وملاحظات الحقل وتوفر البذور وتحليل التربة قبل الزراعة.",
   },
   method: {
-    close: "إغلاق", label: "المنهجية", title: "كيف يرتّب فيلد شيفت الدورة الزراعية",
+    close: "إغلاق", label: "المنهجية", title: "كيف يرتّب أجري روتيشن الدورة الزراعية",
     description: "كل نتيجة تأتي من قواعد صريحة ودرجات معيارية. لا يغيّر أي نموذج لغوي أو توقع محصول هذا الترتيب.",
     steps: [
       { title: "الرصد", text: "يؤسس تاريخ NASA POWER المناخي وتقديرات SoilGrids السياق الإقليمي." },
@@ -304,7 +304,7 @@ export const ar: typeof en = {
       { title: "التوضيح", text: "تعرض أفضل ثلاث استراتيجيات متمايزة العوامل ومصادر البيانات ودرجة عدم اليقين." },
     ],
     formula: "الدرجة الكلية = المناخ × الوزن + المياه × الوزن + التربة × الوزن + التنوع × الوزن",
-    limit: "لا يستطيع فيلد شيفت تحديد صرف الحقل أو ضغط الآفات المحلي أو أداء الأصناف أو طقس الأيام المستقبلية أو توفر البذور أو احتياجات التسميد الدقيقة.",
+    limit: "لا يستطيع أجري روتيشن تحديد صرف الحقل أو ضغط الآفات المحلي أو أداء الأصناف أو طقس الأيام المستقبلية أو توفر البذور أو احتياجات التسميد الدقيقة.",
   },
   mock: {
     explain1: (crop: string) => `«${crop}» ملاءمته نسبيًا جيدة لملف الحرارة والمياه الإقليمي.`,

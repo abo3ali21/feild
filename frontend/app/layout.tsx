@@ -31,7 +31,7 @@ const firjarArabic = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Field Shift — Climate-resilient crop rotations",
+  title: "Agri Rotation — Climate-resilient crop rotations",
   description: "Compare three-year crop strategies using NASA climate records, estimated soil conditions, and transparent agronomic rules.",
   icons: {
     icon: "/favicon.svg",

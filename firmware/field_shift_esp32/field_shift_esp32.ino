@@ -41,7 +41,7 @@ const unsigned long POST_INTERVAL_MS = 3000; // Send every 3 seconds for live de
 void setup() {
   Serial.begin(115200);
   delay(500);
-  Serial.println("\n=== Field Shift ESP32 Ground-Truth Node ===");
+  Serial.println("\n=== Agri Rotation ESP32 Ground-Truth Node ===");
 
   // Configure ADC for Capacitive Soil Sensor
   analogReadResolution(12);
@@ -58,7 +58,7 @@ void setup() {
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
-    display.println("Field Shift IoT");
+    display.println("Agri Rotation IoT");
     display.println("Connecting WiFi...");
     display.display();
   } else {
@@ -119,7 +119,7 @@ void updateOled(float temp, float hum, float soilPct, int httpCode) {
   if (!oledAvailable) return;
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.print("FIELD SHIFT | ");
+  display.print("AGRI ROTATION | ");
   display.println(WiFi.status() == WL_CONNECTED ? "ONLINE" : "NO WIFI");
   display.println("---------------------");
   display.printf("Temp:  %.1f C\n", temp);

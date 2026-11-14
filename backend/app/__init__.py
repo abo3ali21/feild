@@ -1,1 +1,1 @@
-"""Field Shift backend package."""
+"""Agri Rotation backend package."""

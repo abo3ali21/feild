@@ -1,12 +1,12 @@
-# Field Shift frontend
+# Agri Rotation Frontend
 
-This directory contains the Next.js frontend for Field Shift, a decision-support application for comparing three-year crop rotations against regional climate and soil context. The UI is implemented in `app/` with TypeScript and React; the FastAPI service and project-level setup are documented in the root `README.md`.
+This directory contains the Next.js frontend for **Agri Rotation (أجري روتيشن)**, a decision-support application for comparing three-year crop rotations against regional climate and soil context. The UI is implemented in `app/` with TypeScript and React; the FastAPI service and project-level setup are documented in the root `README.md`.
 
 ## Requirements
 
 - Node.js 22.13 or newer
 - npm
-- The Field Shift backend for live evaluations (the UI uses a labelled demonstration fallback when it is unavailable)
+- The Agri Rotation backend for live evaluations (the UI uses a labelled demonstration fallback when it is unavailable)
 
 ## Local run with the API
 

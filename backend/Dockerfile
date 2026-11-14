@@ -1,4 +1,4 @@
-# Backend Dockerfile for Field Shift FastAPI Service
+# Backend Dockerfile for Agri Rotation FastAPI Service
 FROM python:3.11-slim
 
 WORKDIR /app
