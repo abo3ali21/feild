@@ -55,6 +55,7 @@ import { DataProvenance } from "@/components/DataProvenance";
 import { FiveCropSelector, FiveCropEvaluation, AVAILABLE_FIVE_CROPS } from "@/components/FiveCropSelector";
 import { MouseSpotlight, StepTransition, TiltCard } from "@/components/MotionPrimitives";
 import { OrbitalBackground } from "@/components/OrbitalBackground";
+import { FarmGlobe3D } from "@/components/FarmGlobe3D";
 
 type Dict = (typeof DICTS)[Lang];
 
@@ -851,14 +852,29 @@ function LocationStep(p: SetupProps) {
         </Switch.Root>
       </div>
 
-      <FarmMap
-        demo={p.demo}
-        locate={p.locate}
-        updateCoordinates={p.updateCoordinates}
-        displayName={d.name}
-        displayCountry={d.country}
-        displaySystem={d.system}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+        <div className="lg:col-span-8">
+          <FarmMap
+            demo={p.demo}
+            locate={p.locate}
+            updateCoordinates={p.updateCoordinates}
+            displayName={d.name}
+            displayCountry={d.country}
+            displaySystem={d.system}
+          />
+        </div>
+        <div className="lg:col-span-4 h-full flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-[#E2DFD5] shadow-xs text-center">
+          <span className="text-xs font-semibold text-[#143626] mb-1 flex items-center gap-1.5">
+            <Orbit size={15} className="text-[#143626]" />
+            {lang === "ar" ? "الموقع المداري التفاعلي 3D" : "3D Planetary Pin"}
+          </span>
+          <FarmGlobe3D lat={p.demo.latitude} lon={p.demo.longitude} />
+          <span className="text-[11px] text-[#5C665E] mt-1 font-mono">
+            {Math.abs(p.demo.latitude).toFixed(4)}°{p.demo.latitude >= 0 ? "N" : "S"},{" "}
+            {Math.abs(p.demo.longitude).toFixed(4)}°{p.demo.longitude >= 0 ? "E" : "W"}
+          </span>
+        </div>
+      </div>
     </>
   );
 }

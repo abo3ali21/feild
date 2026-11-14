@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { MouseSpotlight, TiltCard } from "@/components/MotionPrimitives";
 import { OrbitalBackground } from "@/components/OrbitalBackground";
+import { SoilCrossSection3D } from "@/components/SoilCrossSection3D";
 
 interface TelemetryData {
   active: boolean;
@@ -314,6 +315,11 @@ export default function HardwareStationPage() {
             {isRtl ? "مؤشر التنفس الميكروبي" : "Microbial Respiration Index"}
           </span>
         </TiltCard>
+      </div>
+
+      {/* 3D Interactive Soil Moisture Cross-Section Column */}
+      <div className="max-w-5xl mx-auto mb-8">
+        <SoilCrossSection3D moisturePct={telemetry.soil_moisture_pct} isRtl={isRtl} />
       </div>
 
       {/* Satellite (NASA EO) vs. Field Sensor (ESP32) 3-Row Comparison Card */}
