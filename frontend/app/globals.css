@@ -48,3 +48,9 @@ html[lang="ar"] .priority-card small,html[lang="ar"] .demo small,html[lang="ar"]
 .live-badge.nasa{background:#e8f5e9;color:#2e7d32}
 .status-pill.online i{background:#2e7d32}
 .status-pill.offline i{background:#e65100}
+.demo-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;padding-bottom:6px}
+.demo-chip{text-align:start;border:1px solid var(--line);background:#faf8f1;color:var(--ink);padding:10px;min-height:62px;cursor:pointer;border-radius:7px}
+.demo-chip:hover,.demo-chip.active{border-color:var(--forest-2);box-shadow:inset 0 -3px var(--forest-2);background:#f1f5ec}
+.demo-chip span{display:block;font-size:.76rem;font-weight:800;line-height:1.25}
+.demo-chip small{color:var(--muted);font-size:.65rem}
+
