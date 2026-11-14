@@ -487,8 +487,8 @@ export default function Home() {
             <span>
               <strong>
                 {lang === "ar"
-                  ? "معايرة الحساس الحقلية نشطة (ESP32 Ground-Truth Active):"
-                  : "Field Sensor Calibration Active (ESP32 Ground-Truth):"}
+                  ? "معايرة الحساس الحقلية نشطة (Ground-Truth Active):"
+                  : "Field Sensor Calibration Active (Ground-Truth):"}
               </strong>{" "}
               {lang === "ar"
                 ? `حرارة الحقل ${hardwareOverride.temperature_c.toFixed(1)}°C | رطوبة الجذور ${hardwareOverride.soil_moisture_pct.toFixed(1)}% | الرطوبة النسبية ${hardwareOverride.humidity_pct.toFixed(1)}%`
@@ -604,7 +604,7 @@ function Header({
         </a>
         <Link href="/hardware" className={pillStyle}>
           <Cpu size={14} className="shrink-0" />
-          <span>{lang === "ar" ? "وحدة الاستشعار (ESP32)" : "Hardware Node"}</span>
+          <span>{lang === "ar" ? "وحدة الاستشعار الحقلية" : "Field Sensor Station"}</span>
           {hardwareOverride?.active && (
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
           )}
@@ -753,7 +753,7 @@ function LocationStep(p: SetupProps) {
           </span>
           <div>
             <span className="font-semibold block text-xs">
-              {lang === "ar" ? "قراءات الحساس الحقلي (ESP32 Ground-Truth):" : "ESP32 Ground-Truth Telemetry:"}
+              {lang === "ar" ? "قراءات الحساس الحقلي (Ground-Truth):" : "Ground-Truth Telemetry:"}
             </span>
             <span className="text-stone-600 text-[11px]">
               {lang === "ar"
@@ -916,7 +916,7 @@ function ConditionStep(p: SetupProps) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
           <strong style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.86rem", color: "var(--forest)" }}>
             <Cpu size={16} style={{ color: p.hardwareOverride?.active ? "#10b981" : "var(--forest-2)" }} />
-            {lang === "ar" ? "استنتاج قوام التربة من حساس ESP32 الميداني:" : "Soil Texture Inferred from ESP32 Sensor:"}
+            {lang === "ar" ? "استنتاج قوام التربة من الحساس الميداني:" : "Soil Texture Inferred from Field Sensor:"}
           </strong>
           <span
             style={{

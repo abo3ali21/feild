@@ -1,117 +1,96 @@
 "use client";
 
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useEffect } from "react";
+import { motion, useMotionValue, useSpring, useMotionTemplate } from "framer-motion";
 
 export function OrbitalBackground() {
+  // 1. Direct cursor coordinates for the soft light glow
+  const mouseX = useMotionValue(-300);
+  const mouseY = useMotionValue(-300);
+
+  // 2. Heavy-damped spring coordinates so the satellite glides slowly & smoothly behind the mouse
+  const satX = useSpring(mouseX, { stiffness: 18, damping: 28, mass: 2.2 });
+  const satY = useSpring(mouseY, { stiffness: 18, damping: 28, mass: 2.2 });
+
+  useEffect(() => {
+    // Initialize near top-right/center before first mouse move
+    mouseX.set(window.innerWidth * 0.65);
+    mouseY.set(window.innerHeight * 0.3);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX.set(e.clientX);
+      mouseY.set(e.clientY);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  // Continuous soft light halo around the cursor
+  const cursorLight = useMotionTemplate`radial-gradient(380px circle at ${mouseX}px ${mouseY}px, rgba(20, 54, 38, 0.085), rgba(143, 168, 147, 0.04) 45%, transparent 75%)`;
+
   return (
     <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-[#F7F5EE]">
-      {/* 1. Ambient Breathing Light Glows (أنوار هادئة بتروح وتيجي باستمرار) */}
+      {/* 1. Continuous Soft Light Glow on Cursor */}
       <motion.div
-        animate={{
-          scale: [1, 1.18, 1],
-          opacity: [0.05, 0.11, 0.05],
-          x: [0, 40, 0],
-          y: [0, -25, 0],
-        }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute -top-32 -right-32 w-[520px] h-[520px] rounded-full bg-[#143626] blur-3xl"
-      />
-      <motion.div
-        animate={{
-          scale: [1.1, 0.95, 1.1],
-          opacity: [0.06, 0.13, 0.06],
-          x: [0, -35, 0],
-          y: [0, 30, 0],
-        }}
-        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute -bottom-40 -left-32 w-[580px] h-[580px] rounded-full bg-[#6B8E78] blur-3xl"
+        className="absolute inset-0"
+        style={{ background: cursorLight }}
       />
 
-      {/* 2. Orbital Arc & Continuously Moving Earth Observation Satellite */}
+      {/* 2. Subtle Orbital Arc Decoration */}
       <svg
         viewBox="0 0 1440 800"
         fill="none"
-        className="w-full h-full opacity-55"
+        className="w-full h-full opacity-35"
         preserveAspectRatio="xMidYMid slice"
       >
-        {/* Subtle Topographic / Orbital Rings */}
         <path
           d="M -120 520 Q 720 80 1560 460"
           stroke="#143626"
           strokeOpacity="0.12"
-          strokeWidth="1.5"
+          strokeWidth="1.2"
           strokeDasharray="6 8"
         />
-        <path
-          d="M -120 620 Q 720 200 1560 560"
-          stroke="#143626"
-          strokeOpacity="0.07"
-          strokeWidth="1"
-        />
-
-        {/* Travelling Light Pulse along the Orbital Path */}
-        <motion.path
-          d="M -120 520 Q 720 80 1560 460"
-          stroke="#143626"
-          strokeOpacity="0.35"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          initial={{ pathLength: 0.12, pathOffset: 0 }}
-          animate={{ pathOffset: [0, 1] }}
-          transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
-        />
-
-        {/* Moving Satellite Node with Radar Scan Pulse */}
-        <motion.g
-          initial={{ x: -60, y: 490 }}
-          animate={{
-            x: [-60, 360, 720, 1080, 1500],
-            y: [490, 290, 235, 285, 445],
-          }}
-          transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-        >
-          {/* Radar Scan Wave */}
-          <motion.circle
-            r="26"
-            stroke="#143626"
-            strokeWidth="1.2"
-            fill="none"
-            animate={{ scale: [0.4, 2.2], opacity: [0.45, 0] }}
-            transition={{ duration: 2.6, repeat: Infinity, ease: "easeOut" }}
-          />
-          {/* Core Glowing Beacon */}
-          <circle r="5" fill="#143626" />
-          <circle r="10" fill="#143626" fillOpacity="0.15" />
-          {/* Satellite Solar Wings */}
-          <rect x="-18" y="-2.5" width="10" height="5" rx="1" fill="#143626" fillOpacity="0.75" />
-          <rect x="8" y="-2.5" width="10" height="5" rx="1" fill="#143626" fillOpacity="0.75" />
-        </motion.g>
-
-        {/* Ground Sensor Pulsing Nodes (Representing Field IoT Telemetry) */}
-        {[
-          { cx: 340, cy: 610, delay: 0 },
-          { cx: 740, cy: 540, delay: 1.2 },
-          { cx: 1120, cy: 630, delay: 2.4 },
-        ].map((node, idx) => (
-          <g key={idx} transform={`translate(${node.cx}, ${node.cy})`}>
-            <motion.circle
-              r="18"
-              stroke="#143626"
-              strokeWidth="1"
-              fill="none"
-              animate={{ scale: [0.5, 2], opacity: [0.35, 0] }}
-              transition={{
-                duration: 3.5,
-                delay: node.delay,
-                repeat: Infinity,
-                ease: "easeOut",
-              }}
-            />
-            <circle r="3" fill="#143626" fillOpacity="0.45" />
-          </g>
-        ))}
       </svg>
+
+      {/* 3. Slow, Gentle Satellite Gliding Behind the Cursor */}
+      <motion.div
+        style={{
+          x: satX,
+          y: satY,
+          translateX: "-50%",
+          translateY: "-50%",
+        }}
+        className="fixed top-0 left-0 will-change-transform"
+      >
+        <div className="relative flex items-center justify-center">
+          {/* Gentle Radar Pulse */}
+          <motion.div
+            animate={{ scale: [0.6, 2.2], opacity: [0.35, 0] }}
+            transition={{ duration: 3.2, repeat: Infinity, ease: "easeOut" }}
+            className="absolute w-12 h-12 rounded-full border border-[#143626]/40"
+          />
+          {/* Satellite Icon (Forest Green #143626) */}
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 36 36"
+            fill="none"
+            className="text-[#143626] opacity-75 drop-shadow-sm"
+          >
+            {/* Solar Panels */}
+            <rect x="2" y="14" width="9" height="8" rx="1.5" fill="currentColor" fillOpacity="0.8" />
+            <rect x="25" y="14" width="9" height="8" rx="1.5" fill="currentColor" fillOpacity="0.8" />
+            {/* Connector Arms */}
+            <line x1="11" y1="18" x2="14" y2="18" stroke="currentColor" strokeWidth="1.8" />
+            <line x1="22" y1="18" x2="25" y2="18" stroke="currentColor" strokeWidth="1.8" />
+            {/* Center Core */}
+            <rect x="14" y="13" width="8" height="10" rx="2" fill="currentColor" />
+            {/* Signal Dish */}
+            <path d="M15 24 Q18 28 21 24" stroke="currentColor" strokeWidth="1.5" fill="none" />
+          </svg>
+        </div>
+      </motion.div>
     </div>
   );
 }

@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { MouseSpotlight, TiltCard } from "@/components/MotionPrimitives";
 import { OrbitalBackground } from "@/components/OrbitalBackground";
-import { SoilCrossSection3D } from "@/components/SoilCrossSection3D";
 
 interface TelemetryData {
   active: boolean;
@@ -163,7 +162,7 @@ export default function HardwareStationPage() {
   return (
     <div
       dir={isRtl ? "rtl" : "ltr"}
-      className="min-h-screen bg-[#F7F5EE] text-[#143626] py-8 px-4 sm:px-6 md:px-8 font-sans relative"
+      className="min-h-screen bg-[#F7F5EE] text-[#143626] py-8 px-4 sm:px-6 md:px-8 font-sans relative farm-grid-pattern"
     >
       <OrbitalBackground />
       <MouseSpotlight />
@@ -177,7 +176,7 @@ export default function HardwareStationPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold font-serif text-[#143626] m-0">
-                {isRtl ? "حساسات الحقل (ESP32)" : "Field Sensors (ESP32)"}
+                {isRtl ? "وحدة الاستشعار الحقلية" : "Field Sensor Station"}
               </h1>
               <p className="text-[#5C665E] text-xs sm:text-sm mt-0.5 m-0">
                 {isRtl
@@ -238,7 +237,9 @@ export default function HardwareStationPage() {
               <Droplets size={16} className="text-sky-600" />
               {isRtl ? "رطوبة التربة" : "Soil Moisture"}
             </span>
-            <span className="text-[11px] font-semibold text-emerald-700">ESP32</span>
+            <span className="text-[11px] font-semibold text-emerald-700">
+              {isRtl ? "حساس التربة" : "Soil Probe"}
+            </span>
           </div>
           <div className="text-3xl font-bold font-serif text-[#143626] mb-2">
             {telemetry.soil_moisture_pct.toFixed(1)}%
@@ -317,18 +318,13 @@ export default function HardwareStationPage() {
         </TiltCard>
       </div>
 
-      {/* 3D Interactive Soil Moisture Cross-Section Column */}
-      <div className="max-w-5xl mx-auto mb-8">
-        <SoilCrossSection3D moisturePct={telemetry.soil_moisture_pct} isRtl={isRtl} />
-      </div>
-
-      {/* Satellite (NASA EO) vs. Field Sensor (ESP32) 3-Row Comparison Card */}
+      {/* Satellite (NASA EO) vs. Field Sensor 3-Row Comparison Card */}
       <div className="max-w-5xl mx-auto bg-white border border-[#E2DFD5] rounded-2xl p-6 shadow-xs mb-8">
         <h3 className="text-base font-bold text-[#143626] mb-4 flex items-center gap-2">
           <Activity size={18} className="text-emerald-700" />
           {isRtl
-            ? "مقارنة القمر الصناعي (NASA POWER) مع قراءات الحساس الميداني (ESP32)"
-            : "Satellite (NASA POWER) vs. Ground-Truth (ESP32) Delta"}
+            ? "مقارنة القمر الصناعي (NASA POWER) مع قراءات الحساس الميداني"
+            : "Satellite (NASA POWER) vs. Ground-Truth Sensor Delta"}
         </h3>
 
         <div className="overflow-x-auto">
@@ -337,7 +333,7 @@ export default function HardwareStationPage() {
               <tr className="border-b border-[#E2DFD5] text-stone-500 font-semibold">
                 <th className="py-2.5 px-3 text-start">{isRtl ? "المتغير الزراعي" : "Agronomic Variable"}</th>
                 <th className="py-2.5 px-3 text-start">{isRtl ? "تقدير القمر الصناعي (NASA POWER)" : "Satellite Macro-Estimate"}</th>
-                <th className="py-2.5 px-3 text-start">{isRtl ? "قياس الحساس الميداني (ESP32)" : "In-Situ Sensor (ESP32)"}</th>
+                <th className="py-2.5 px-3 text-start">{isRtl ? "قياس الحساس الميداني" : "In-Situ Sensor"}</th>
                 <th className="py-2.5 px-3 text-start">{isRtl ? "الفارق والملاحظة الحقلية" : "Ground Delta & Significance"}</th>
               </tr>
             </thead>
