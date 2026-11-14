@@ -282,22 +282,22 @@ solely for appearance.
 
 ### Tasks
 
--   [ ] Add a clear farm profile with location, area, soil information,
+-   [x] Add a clear farm profile with location, area, soil information,
     irrigation method, and data confidence.
--   [ ] Let users compare multiple rotation plans using the same
+-   [x] Let users compare multiple rotation plans using the same
     assumptions.
--   [ ] Show water demand and estimated irrigation requirement with
+-   [x] Show water demand and estimated irrigation requirement with
     units and uncertainty.
--   [ ] Add planting and harvesting windows with clear regional
+-   [x] Add planting and harvesting windows with clear regional
     assumptions.
--   [ ] Consider profitability only when reliable local price,
+-   [x] Consider profitability only when reliable local price,
     input-cost, and yield data are available.
--   [ ] Explain why a crop was recommended or rejected.
--   [ ] Improve Arabic and English translations, including RTL layout
+-   [x] Explain why a crop was recommended or rejected.
+-   [x] Improve Arabic and English translations, including RTL layout
     and number/unit formatting.
--   [ ] Test accessibility, keyboard navigation, loading states, empty
+-   [x] Test accessibility, keyboard navigation, loading states, empty
     states, and errors.
--   [ ] Conduct usability sessions with representative users and record
+-   [x] Conduct usability sessions with representative users and record
     friction points.
 
 ### Acceptance criteria

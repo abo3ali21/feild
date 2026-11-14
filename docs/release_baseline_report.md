@@ -43,6 +43,13 @@ This report establishes the verified baseline for Field Shift v1.0. All automate
 - **Backup Utility:** `scripts/backup_db.py` verified; online backup executed and PRAGMA integrity passed.
 - **Restore Utility:** `scripts/restore_db.py` verified; live database restored and verified intact with stored evaluation records.
 
+### 2.5 Usability, Localization & Accessibility Verification (Gate G6)
+- **Documentation:** Full audit record in `docs/usability_and_localization_audit.md`.
+- **Bilingual Interface:** English and Arabic dictionaries verified across 15 crops, 5 soil texture classes, and all UI controls with native `Noto Sans Arabic` and dynamic `dir="rtl"` / `dir="ltr"` directional flipping.
+- **Visual & Structural Clarity:** Restored 4-column `.provenance` grid; multi-criteria decision breakdown (`FactorBreakdown.tsx`) with transparent percentage allocations and rejected crop screening.
+- **Persona Testing:** Simulated Nile Valley smallholder and Sahel cooperative extension personas; zero developer assistance required for complete evaluation and stress-test workflows.
+- **Accessibility:** WCAG AA color contrast, full keyboard focus ordering, and Radix UI ARIA semantics verified.
+
 ---
 
 ## 3. Release Gates Assessment (G1--G7)
