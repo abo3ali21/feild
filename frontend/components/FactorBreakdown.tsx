@@ -1,18 +1,16 @@
 "use client";
 
 import React from "react";
-import { AlertCircle, CheckCircle2, ChevronDown, ListFilter, Scale } from "lucide-react";
+import { AlertCircle, Scale } from "lucide-react";
 import { useLang } from "@/app/lang";
-import { Decision, Rotation } from "@/lib/types";
+import { Decision } from "@/lib/types";
 
 type FactorBreakdownProps = {
-  rotations: Rotation[];
   rejectedExamples?: Decision[];
   priority: string;
 };
 
 export function FactorBreakdown({
-  rotations,
   rejectedExamples = [],
   priority,
 }: FactorBreakdownProps) {

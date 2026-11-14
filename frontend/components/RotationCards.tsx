@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, Leaf, ShieldAlert, Sparkles, TriangleAlert } from "lucide-react";
-import { useLang, Ltr } from "@/app/lang";
+import { ChevronLeft, ChevronRight, Leaf, Sparkles, TriangleAlert } from "lucide-react";
+import { useLang } from "@/app/lang";
 import { Rotation } from "@/lib/types";
 import { CROPS, WARNING_LABELS } from "@/app/i18n";
 

@@ -22,7 +22,7 @@ export function FarmMap({
   displayCountry,
   displaySystem,
 }: FarmMapProps) {
-  const { lang, t, num } = useLang();
+  const { t } = useLang();
 
   return (
     <div className="farm-map-container" style={{ marginBottom: "1rem" }}>

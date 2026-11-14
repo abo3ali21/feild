@@ -11,7 +11,6 @@ import {
   FlaskConical,
   Globe,
   Info,
-  Layers3,
   Orbit,
   RefreshCw,
   ShieldCheck,
@@ -30,7 +29,6 @@ import {
   ApiCrop,
   Demo,
   Evaluation,
-  Rotation,
 } from "@/lib/types";
 import {
   CROPS,
@@ -106,7 +104,6 @@ export default function Home() {
   const [rainChange, setRainChange] = useState(0);
   const [tempChange, setTempChange] = useState(0);
   const [methodOpen, setMethodOpen] = useState(false);
-  const [sourceNoteKey, setSourceNoteKey] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -158,7 +155,7 @@ export default function Home() {
             setDemoList(mapped);
           }
         }
-      } catch (err) {
+      } catch {
         if (active) setApiOnline(false);
       }
     }
@@ -237,7 +234,6 @@ export default function Home() {
       }
       const data = (await response.json()) as Evaluation;
       setEvaluation(data);
-      setSourceNoteKey("apiConnected");
       window.setTimeout(() => {
         window.clearInterval(ticker);
         setStage(3);
@@ -273,7 +269,6 @@ export default function Home() {
       }
       const simulatedData = (await response.json()) as Evaluation;
       setEvaluation(simulatedData);
-      setSourceNoteKey("scenarioApi");
     } catch (err) {
       console.error("Simulation error:", err);
       setEvaluation(
@@ -285,7 +280,6 @@ export default function Home() {
           lang
         )
       );
-      setSourceNoteKey("scenarioMock");
     }
   }
 
@@ -335,7 +329,6 @@ export default function Home() {
         <Results
           data={evaluation}
           demo={demo}
-          sourceNoteKey={sourceNoteKey}
           rainChange={rainChange}
           setRainChange={setRainChange}
           tempChange={tempChange}
@@ -782,7 +775,6 @@ function Loading({ stage }: { stage: number }) {
 function Results({
   data,
   demo,
-  sourceNoteKey,
   rainChange,
   setRainChange,
   tempChange,
@@ -794,7 +786,6 @@ function Results({
 }: {
   data: Evaluation;
   demo: Demo;
-  sourceNoteKey: string;
   rainChange: number;
   setRainChange: (n: number) => void;
   tempChange: number;
@@ -859,7 +850,6 @@ function Results({
 
       {/* Multi-Criteria Decision Breakdown and Rejected Constraints */}
       <FactorBreakdown
-        rotations={data.recommended_rotations}
         rejectedExamples={data.rejected_examples}
         priority={priority}
       />

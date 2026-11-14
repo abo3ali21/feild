@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Calendar, CheckCircle2, Sprout } from "lucide-react";
+import { Calendar, CheckCircle2 } from "lucide-react";
 import { useLang } from "@/app/lang";
 import { Rotation } from "@/lib/types";
 import { CROPS } from "@/app/i18n";
