@@ -16,11 +16,20 @@ from app.models.schemas import Crop, Decision, EnvironmentalContext, Priority, R
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
+PRIORITY_WEIGHTS = {
+    "profit": {"profit": 0.50, "soil": 0.20, "water": 0.15, "pest": 0.15},
+    "soil":   {"soil": 0.50, "pest": 0.25, "water": 0.15, "profit": 0.10},
+    "water":  {"water": 0.50, "soil": 0.20, "pest": 0.15, "profit": 0.15},
+}
+
 WEIGHT_PRESETS = {
     Priority.balanced: {"climate": 0.30, "water": 0.30, "soil": 0.25, "diversity": 0.15},
     Priority.drought_resilience: {"climate": 0.25, "water": 0.45, "soil": 0.20, "diversity": 0.10},
     Priority.soil_recovery: {"climate": 0.20, "water": 0.20, "soil": 0.45, "diversity": 0.15},
     Priority.crop_diversity: {"climate": 0.20, "water": 0.20, "soil": 0.20, "diversity": 0.40},
+    Priority.profit: {"climate": 0.20, "water": 0.15, "soil": 0.20, "diversity": 0.45},
+    Priority.soil: {"climate": 0.15, "water": 0.15, "soil": 0.50, "diversity": 0.20},
+    Priority.water: {"climate": 0.20, "water": 0.50, "soil": 0.15, "diversity": 0.15},
 }
 
 
@@ -449,17 +458,19 @@ def evaluate_selected_five_crops(
         pest_score = max(0.0, 100.0 - same_family_penalty)
         profit_score = sum(c["profit_index"] for c in crops_seq) / 3.0
 
-        weights = {
-            "water": (0.50, 0.20, 0.15, 0.15),
-            "soil": (0.15, 0.50, 0.25, 0.10),
-            "profit": (0.15, 0.20, 0.15, 0.50),
-        }.get(priority, (0.35, 0.25, 0.20, 0.20))
+        p_key = priority.lower() if isinstance(priority, str) else "profit"
+        if p_key in ("drought_resilience", "water"):
+            w_dict = PRIORITY_WEIGHTS["water"]
+        elif p_key in ("soil_recovery", "soil"):
+            w_dict = PRIORITY_WEIGHTS["soil"]
+        else:
+            w_dict = PRIORITY_WEIGHTS.get(p_key, PRIORITY_WEIGHTS["profit"])
 
         total_score = round(
-            weights[0] * water_fit +
-            weights[1] * soil_score +
-            weights[2] * pest_score +
-            weights[3] * profit_score,
+            w_dict["water"] * water_fit +
+            w_dict["soil"] * soil_score +
+            w_dict["pest"] * pest_score +
+            w_dict["profit"] * profit_score,
             1,
         )
 

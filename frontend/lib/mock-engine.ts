@@ -4,13 +4,52 @@ export type Demo = { id:string;name:string;country:string;system:string;latitude
 export type Rotation = { rank:number;sequence:{year:number;crop_id:string;name:string}[];scores:{overall:number;climate:number;water:number;soil:number;diversity:number};explanations:string[];warnings:string[];factors:Record<string,string[]> };
 export type Evaluation = { status:string;evaluation_id:string;environmental_context:{annual_gdd:number;seasonal_rainfall_mm:number;historical_rainfall_mm:number;precipitation_anomaly_pct:number;rainfall_status:string;heat_stress_days:number;soil_moisture_state:string;soil_texture:string;soil_ph:number;soil_organic_matter_pct:number;data_quality:Record<string,string>};data_provenance:{variable:string;source:string;status:string}[];recommended_rotations:Rotation[];rejected_examples?:{passed:boolean;rule:string;reason:string}[] };
 
+export type PriorityKey = "profit" | "soil" | "water";
+
+export const FARMER_PRIORITIES: Record<
+  PriorityKey,
+  {
+    id: PriorityKey;
+    titleAr: string;
+    titleEn: string;
+    descAr: string;
+    descEn: string;
+    weights: { profit: number; soil: number; water: number; pest: number };
+  }
+> = {
+  profit: {
+    id: "profit",
+    titleAr: "أعلى عائد مادي",
+    titleEn: "Maximize Profit",
+    descAr: "يركز على المحاصيل الأعلى ربحية وتقليل تكلفة الأسمدة.",
+    descEn: "Prioritizes high-value crops and reduces fertilizer costs.",
+    weights: { profit: 0.5, soil: 0.2, water: 0.15, pest: 0.15 },
+  },
+  soil: {
+    id: "soil",
+    titleAr: "الحفاظ على خصوبة الأرض",
+    titleEn: "Preserve Soil Health",
+    descAr: "يجدد النيتروجين في التربة ويمنع إجهاد الأرض والآفات.",
+    descEn: "Rebuilds soil nitrogen naturally and prevents pest buildup.",
+    weights: { soil: 0.5, pest: 0.25, water: 0.15, profit: 0.1 },
+  },
+  water: {
+    id: "water",
+    titleAr: "توفير المياه",
+    titleEn: "Save Water",
+    descAr: "يقلل استهلاك الري ويناسب الأرض ذات الرطوبة المحدودة.",
+    descEn: "Minimizes irrigation demand based on your soil moisture.",
+    weights: { water: 0.5, soil: 0.2, pest: 0.15, profit: 0.15 },
+  },
+};
+
 export const DEMOS:Demo[]=[
-  {id:"luxor",name:"Nile Valley / Luxor",country:"Egypt",system:"Irrigated",latitude:25.7013,longitude:32.6553,currentCrop:"wheat",soil:"SANDY_LOAM",irrigated:true,priority:"balanced"},
-  {id:"sahel",name:"Semi-Arid Sahel",country:"Senegal",system:"Rainfed",latitude:14.1203,longitude:-16.0351,currentCrop:"groundnut",soil:"SANDY_LOAM",irrigated:false,priority:"drought_resilience"},
-  {id:"iowa",name:"Iowa Corn Belt",country:"USA",system:"Rainfed",latitude:42.0308,longitude:-93.6319,currentCrop:"maize",soil:"LOAM",irrigated:false,priority:"soil_recovery"},
-  {id:"punjab",name:"Punjab / Indus Basin",country:"Pakistan",system:"Irrigated",latitude:30.1575,longitude:71.5249,currentCrop:"cotton",soil:"CLAY_LOAM",irrigated:true,priority:"drought_resilience"},
-  {id:"andes",name:"Andean smallholder",country:"Peru",system:"Rainfed",latitude:-13.5319,longitude:-71.9675,currentCrop:"potato",soil:"LOAM",irrigated:false,priority:"balanced"},
-  {id:"western_australia",name:"Western Wheat Belt",country:"Australia",system:"Rainfed",latitude:-31.48,longitude:117.16,currentCrop:"barley",soil:"SANDY_LOAM",irrigated:false,priority:"crop_diversity"},
+  {id:"luxor",name:"Nile Valley / Luxor",country:"Egypt",system:"Irrigated",latitude:25.7013,longitude:32.6553,currentCrop:"wheat",soil:"SANDY_LOAM",irrigated:true,priority:"water"},
+  {id:"sahel",name:"Semi-Arid Sahel",country:"Senegal",system:"Rainfed",latitude:14.1203,longitude:-16.0351,currentCrop:"groundnut",soil:"SANDY_LOAM",irrigated:false,priority:"water"},
+  {id:"iowa",name:"Iowa Corn Belt",country:"USA",system:"Rainfed",latitude:42.0308,longitude:-93.6319,currentCrop:"maize",soil:"LOAM",irrigated:false,priority:"soil"},
+  {id:"punjab",name:"Punjab / Indus Basin",country:"Pakistan",system:"Irrigated",latitude:30.1575,longitude:71.5249,currentCrop:"cotton",soil:"CLAY_LOAM",irrigated:true,priority:"water"},
+  {id:"andes",name:"Andean smallholder",country:"Peru",system:"Rainfed",latitude:-13.5319,longitude:-71.9675,currentCrop:"potato",soil:"LOAM",irrigated:false,priority:"soil"},
+  {id:"western_australia",name:"Western Wheat Belt",country:"Australia",system:"Rainfed",latitude:-31.48,longitude:117.16,currentCrop:"barley",soil:"SANDY_LOAM",irrigated:false,priority:"profit"},
 ];
 const profiles:Record<string,{rain:number;historic:number;heat:number;gdd:number;ph:number;om:number;sequences:string[][]}>={
   luxor:{rain:10,historic:25,heat:45,gdd:3500,ph:7.8,om:1.0,sequences:[["wheat","berseem","maize"],["fava_bean","maize","wheat"],["berseem","sorghum","wheat"]]},
@@ -32,6 +71,28 @@ export function mockEvaluation(demo:Demo,rainChange=0,tempChange=0,irrigation=de
         [selectedCrops[2], selectedCrops[0], selectedCrops[3] || selectedCrops[1]],
       ]
     : (p.sequences || [["wheat","berseem","maize"],["fava_bean","maize","wheat"],["berseem","sorghum","wheat"]]);
-  const rotations=activeSequences.map((sequence,index)=>{const climate=Math.max(50,Math.round(92-index*4-tempChange*5));const water=Math.max(42,Math.round(88-index*3-penalty));const soil=Math.max(55,Math.round(84-index*2+(sequence.some(c=>["cowpea","chickpea","soybean","berseem","fava_bean"].includes(c))?4:0)));const diversity=Math.max(60,88-index*4);const overall=Math.round(climate*.3+water*.3+soil*.25+diversity*.15);return {rank:index+1,sequence:sequence.map((crop,year)=>({year:year+1,crop_id:crop,name:cropLabel(crop)})),scores:{overall,climate,water,soil,diversity},explanations:[t.mock.explain1(cropLabel(sequence[0])),t.mock.explain2(cropLabel(sequence[1])),t.mock.explain3],warnings:["Regional observations may not reflect field drainage, cultivar choice, pest pressure, or seed availability."],factors:{climate:[Math.round(p.gdd*(1+tempChange*.035))+" seasonal GDD",(p.heat+Math.round(tempChange*6))+" heat-stress days"],water:[Math.round(rain)+" mm seasonal rainfall",anomaly.toFixed(1)+"% rainfall anomaly"],soil:[p.ph.toFixed(1)+" estimated pH","Legume contribution included"],diversity:["3 crop families","Alternating root profiles"]}}}).sort((a,b)=>b.scores.overall-a.scores.overall).map((r,i)=>({...r,rank:i+1}));
+  const pKey = ((demo.priority in FARMER_PRIORITIES) ? demo.priority : (demo.priority?.includes("water") || demo.priority?.includes("drought") ? "water" : demo.priority?.includes("soil") ? "soil" : "profit")) as PriorityKey;
+  const pWeights = FARMER_PRIORITIES[pKey].weights;
+
+  const rotations=activeSequences.map((sequence,index)=>{
+    const climate=Math.max(50,Math.round(92-index*4-tempChange*5));
+    const water=Math.max(42,Math.round(88-index*3-penalty));
+    const soil=Math.max(55,Math.round(84-index*2+(sequence.some(c=>["cowpea","chickpea","soybean","berseem","fava_bean"].includes(c))?4:0)));
+    const diversity=Math.max(60,88-index*4);
+    const overall=Math.round(pWeights.water * water + pWeights.soil * soil + pWeights.pest * diversity + pWeights.profit * climate);
+    return {
+      rank:index+1,
+      sequence:sequence.map((crop,year)=>({year:year+1,crop_id:crop,name:cropLabel(crop)})),
+      scores:{overall,climate,water,soil,diversity},
+      explanations:[t.mock.explain1(cropLabel(sequence[0])),t.mock.explain2(cropLabel(sequence[1])),t.mock.explain3],
+      warnings:["Regional observations may not reflect field drainage, cultivar choice, pest pressure, or seed availability."],
+      factors:{
+        climate:[Math.round(p.gdd*(1+tempChange*.035))+" seasonal GDD",(p.heat+Math.round(tempChange*6))+" heat-stress days"],
+        water:[Math.round(rain)+" mm seasonal rainfall",anomaly.toFixed(1)+"% rainfall anomaly"],
+        soil:[p.ph.toFixed(1)+" estimated pH","Legume contribution included"],
+        diversity:["3 crop families","Alternating root profiles"]
+      }
+    };
+  }).sort((a,b)=>b.scores.overall-a.scores.overall).map((r,i)=>({...r,rank:i+1}));
   return {status:"success",evaluation_id:"demo-"+demo.id+"-"+Date.now(),environmental_context:{annual_gdd:Math.round(p.gdd*(1+tempChange*.035)),seasonal_rainfall_mm:Math.round(rain),historical_rainfall_mm:p.historic,precipitation_anomaly_pct:Number(anomaly.toFixed(1)),rainfall_status:anomaly<-25?"SIGNIFICANT_DEFICIT":anomaly<-10?"MODERATE_DEFICIT":"NEAR_NORMAL",heat_stress_days:p.heat+Math.round(tempChange*6),soil_moisture_state:"UNAVAILABLE",soil_texture:demo.soil,soil_ph:p.ph,soil_organic_matter_pct:p.om,data_quality:{climate:"FALLBACK",soil:"ESTIMATED",soil_moisture:"UNAVAILABLE"}},data_provenance:[{variable:"temperature_and_rainfall",source:"Demonstration regional profile",status:"FALLBACK"},{variable:"soil_properties",source:"Demonstration soil estimate",status:"ESTIMATED"},{variable:"root_zone_moisture",source:"Optional SMAP adapter not configured",status:"UNAVAILABLE"}],recommended_rotations:rotations};
 }

@@ -17,6 +17,9 @@ export function FactorBreakdown({
   const { lang, t } = useLang();
 
   const weights: Record<string, { climate: number; water: number; soil: number; diversity: number }> = {
+    profit: { climate: 20, water: 15, soil: 20, diversity: 45 },
+    soil: { climate: 15, water: 15, soil: 50, diversity: 20 },
+    water: { climate: 20, water: 50, soil: 15, diversity: 15 },
     balanced: { climate: 30, water: 30, soil: 25, diversity: 15 },
     drought_resilience: { climate: 25, water: 45, soil: 20, diversity: 10 },
     soil_recovery: { climate: 20, water: 20, soil: 45, diversity: 15 },

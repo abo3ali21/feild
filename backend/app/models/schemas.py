@@ -12,6 +12,9 @@ class Priority(str, Enum):
     drought_resilience = "drought_resilience"
     soil_recovery = "soil_recovery"
     crop_diversity = "crop_diversity"
+    profit = "profit"
+    soil = "soil"
+    water = "water"
 
 
 class DataStatus(str, Enum):

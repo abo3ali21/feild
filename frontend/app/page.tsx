@@ -28,7 +28,7 @@ import * as Switch from "@radix-ui/react-switch";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useEffect, useState } from "react";
 
-import { DEMOS, mockEvaluation } from "@/lib/mock-engine";
+import { DEMOS, mockEvaluation, FARMER_PRIORITIES, PriorityKey } from "@/lib/mock-engine";
 import {
   ApiCrop,
   Demo,
@@ -1079,23 +1079,40 @@ function ConditionStep(p: SetupProps) {
       </div>
 
       {/* Priority selection directly in conditions step */}
-      <div style={{ marginTop: "0.5rem" }}>
-        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--forest)", display: "block", marginBottom: "8px" }}>
-          {lang === "ar" ? "أولوية التحليل الزراعي (أوزان MCDA):" : "Farmer Priority Goal (MCDA Weights):"}
-        </span>
-        <div className="priority-grid">
-          {t.priorities.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => p.setPriority(item.id)}
-              className={p.priority === item.id ? "priority-card active" : "priority-card"}
-            >
-              <span className="radio-dot">{p.priority === item.id && <i />}</span>
-              <strong>{item.label}</strong>
-              <small>{item.help}</small>
-            </button>
-          ))}
+      <div className="space-y-2" style={{ marginTop: "1rem" }}>
+        <label className="block text-sm font-semibold text-[#143626]">
+          {lang === "ar" ? "ما هي أولويتك الأساسية في الزراعة؟" : "What is your main farming priority?"}
+        </label>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {(Object.keys(FARMER_PRIORITIES) as PriorityKey[]).map((key) => {
+            const item = FARMER_PRIORITIES[key];
+            const isSelected = p.priority === key;
+
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => p.setPriority(key)}
+                className={`text-right rtl:text-right ltr:text-left p-4 rounded-2xl border transition cursor-pointer ${
+                  isSelected
+                    ? "bg-[#143626] text-[#F7F5EE] border-[#143626] shadow-sm"
+                    : "bg-white text-[#143626] border-[#E2DFD5] hover:border-[#143626]/40 shadow-xs"
+                }`}
+              >
+                <div className="font-bold text-sm">
+                  {lang === "ar" ? item.titleAr : item.titleEn}
+                </div>
+                <p
+                  className={`text-xs mt-1 leading-relaxed ${
+                    isSelected ? "text-[#F7F5EE]/85" : "text-[#5C665E]"
+                  }`}
+                >
+                  {lang === "ar" ? item.descAr : item.descEn}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -1128,7 +1145,12 @@ function ReviewStep(p: SetupProps) {
   const { lang, t } = useLang();
   const cropObj = p.cropsList.find((c) => c.crop_id === p.currentCrop);
   const crop = CROPS[p.currentCrop]?.[lang] ?? (cropObj?.common_name || p.currentCrop);
-  const goal = t.priorities.find((x) => x.id === p.priority)?.label;
+  const priorityItem = FARMER_PRIORITIES[p.priority as PriorityKey];
+  const goal = priorityItem
+    ? lang === "ar"
+      ? priorityItem.titleAr
+      : priorityItem.titleEn
+    : t.priorities.find((x) => x.id === p.priority)?.label || p.priority;
   const soilLabel =
     lang === "ar"
       ? SOIL_TEXTURES[p.soil]?.ar ?? p.soil
