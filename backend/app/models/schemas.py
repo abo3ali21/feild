@@ -28,7 +28,9 @@ class FarmRequest(BaseModel):
     longitude: float = Field(ge=-180, le=180)
     current_crop_id: str
     soil_texture: str | None = None
+    soil_texture_override: str | None = None
     is_irrigated: bool = False
+    irrigation_supply_mm: float | None = Field(default=None, ge=0, le=2000)
     farmer_priority: Priority = Priority.balanced
     demo_profile_id: str | None = None
 
@@ -71,8 +73,12 @@ class EnvironmentalContext(BaseModel):
     soil_moisture_state: str
     soil_moisture_index: float | None = Field(default=None, ge=0, le=1)
     soil_texture: str
+    soil_texture_source: str = "LIVE"
     soil_ph: float
     soil_organic_matter_pct: float
+    effective_water_mm: float | None = None
+    crop_gdd: dict[str, float] = Field(default_factory=dict)
+    crop_heat_stress_days: dict[str, int] = Field(default_factory=dict)
     data_quality: dict[str, DataStatus]
 
 
@@ -109,6 +115,9 @@ class Provenance(BaseModel):
     variable: str
     source: str
     status: DataStatus
+    unit: str | None = None
+    observation_period: str | None = None
+    retrieval_timestamp: str | None = None
 
 
 class EvaluationResponse(BaseModel):
