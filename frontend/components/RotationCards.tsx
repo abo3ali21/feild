@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Leaf, Sparkles, TriangleAlert } from "lucide
 import { useLang } from "@/app/lang";
 import { Rotation } from "@/lib/types";
 import { CROPS, WARNING_LABELS, translateExplanation } from "@/app/i18n";
+import { TiltCard } from "./MotionPrimitives";
 
 type RotationCardsProps = {
   rotations: Rotation[];
@@ -22,94 +23,96 @@ export function RotationCards({ rotations }: RotationCardsProps) {
   return (
     <div className="rotation-list">
       {rotations.map((rotation) => (
-        <article className="rotation-card" key={rotation.rank}>
-          <div className="rank-col">
-            <span>{t.results.rank}</span>
-            <strong>0{rotation.rank}</strong>
-            <div className="overall-ring" style={{ "--score": rotation.scores.overall } as React.CSSProperties}>
-              <b>{rotation.scores.overall}</b>
-              <small>/ 100</small>
-            </div>
-          </div>
-
-          <div className="rotation-main">
-            <div className="rotation-head">
-              <div>
-                <span className="step-label">{t.results.sequence}</span>
-                <h3>{rotation.sequence.map((crop) => cropName(crop)).join(lang === "ar" ? " ← " : " → ")}</h3>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                {rotation.rank === 1 && (
-                  <span className="best-fit">
-                    <Leaf size={14} /> {t.results.strongestFit}
-                  </span>
-                )}
+        <TiltCard key={rotation.rank} className="rounded-2xl">
+          <article className="rotation-card" style={{ margin: 0, height: "100%" }}>
+            <div className="rank-col">
+              <span>{t.results.rank}</span>
+              <strong>0{rotation.rank}</strong>
+              <div className="overall-ring" style={{ "--score": rotation.scores.overall } as React.CSSProperties}>
+                <b>{rotation.scores.overall}</b>
+                <small>/ 100</small>
               </div>
             </div>
 
-            <div className="timeline">
-              {rotation.sequence.map((crop, index) => (
-                <div key={crop.crop_id}>
-                  <span>{t.results.year} 0{crop.year}</span>
-                  <strong>{cropName(crop)}</strong>
-                  {index < 2 && <NextIcon />}
+            <div className="rotation-main">
+              <div className="rotation-head">
+                <div>
+                  <span className="step-label">{t.results.sequence}</span>
+                  <h3>{rotation.sequence.map((crop) => cropName(crop)).join(lang === "ar" ? " ← " : " → ")}</h3>
                 </div>
-              ))}
-            </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  {rotation.rank === 1 && (
+                    <span className="best-fit">
+                      <Leaf size={14} /> {t.results.strongestFit}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-            <div className="why">
-              <strong style={{ display: "flex", alignItems: "center", gap: "5px", color: "#143626" }}>
-                <Sparkles size={14} className="text-[#a96143]" />
-                {t.results.why}
-              </strong>
-              <ul>
-                {rotation.explanations.slice(0, 2).map((item) => (
-                  <li key={item}>{translateExplanation(item, lang)}</li>
+              <div className="timeline">
+                {rotation.sequence.map((crop, index) => (
+                  <div key={crop.crop_id}>
+                    <span>{t.results.year} 0{crop.year}</span>
+                    <strong>{cropName(crop)}</strong>
+                    {index < 2 && <NextIcon />}
+                  </div>
                 ))}
-              </ul>
+              </div>
+
+              <div className="why">
+                <strong style={{ display: "flex", alignItems: "center", gap: "5px", color: "#143626" }}>
+                  <Sparkles size={14} className="text-[#a96143]" />
+                  {t.results.why}
+                </strong>
+                <ul>
+                  {rotation.explanations.slice(0, 2).map((item) => (
+                    <li key={item}>{translateExplanation(item, lang)}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {rotation.warnings && rotation.warnings.length > 0 && (
+                <div className="warning">
+                  <TriangleAlert size={16} />
+                  <span>
+                    {WARNING_LABELS[rotation.warnings[0]]?.[lang] ?? rotation.warnings[0]}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {rotation.warnings && rotation.warnings.length > 0 && (
-              <div className="warning">
-                <TriangleAlert size={16} />
-                <span>
-                  {WARNING_LABELS[rotation.warnings[0]]?.[lang] ?? rotation.warnings[0]}
-                </span>
+            <div className="score-bars">
+              <div>
+                <span>{t.results.dimensions.climate}</span>
+                <strong>{rotation.scores.climate}</strong>
+                <div className="bar">
+                  <i style={{ width: `${rotation.scores.climate}%` }} />
+                </div>
               </div>
-            )}
-          </div>
-
-          <div className="score-bars">
-            <div>
-              <span>{t.results.dimensions.climate}</span>
-              <strong>{rotation.scores.climate}</strong>
-              <div className="bar">
-                <i style={{ width: `${rotation.scores.climate}%` }} />
+              <div>
+                <span>{t.results.dimensions.water}</span>
+                <strong>{rotation.scores.water}</strong>
+                <div className="bar">
+                  <i style={{ width: `${rotation.scores.water}%` }} />
+                </div>
               </div>
-            </div>
-            <div>
-              <span>{t.results.dimensions.water}</span>
-              <strong>{rotation.scores.water}</strong>
-              <div className="bar">
-                <i style={{ width: `${rotation.scores.water}%` }} />
+              <div>
+                <span>{t.results.dimensions.soil}</span>
+                <strong>{rotation.scores.soil}</strong>
+                <div className="bar">
+                  <i style={{ width: `${rotation.scores.soil}%` }} />
+                </div>
               </div>
-            </div>
-            <div>
-              <span>{t.results.dimensions.soil}</span>
-              <strong>{rotation.scores.soil}</strong>
-              <div className="bar">
-                <i style={{ width: `${rotation.scores.soil}%` }} />
+              <div>
+                <span>{t.results.dimensions.diversity}</span>
+                <strong>{rotation.scores.diversity}</strong>
+                <div className="bar">
+                  <i style={{ width: `${rotation.scores.diversity}%` }} />
+                </div>
               </div>
             </div>
-            <div>
-              <span>{t.results.dimensions.diversity}</span>
-              <strong>{rotation.scores.diversity}</strong>
-              <div className="bar">
-                <i style={{ width: `${rotation.scores.diversity}%` }} />
-              </div>
-            </div>
-          </div>
-        </article>
+          </article>
+        </TiltCard>
       ))}
     </div>
   );

@@ -52,6 +52,7 @@ import { CropCalendar } from "@/components/CropCalendar";
 import { FactorBreakdown } from "@/components/FactorBreakdown";
 import { DataProvenance } from "@/components/DataProvenance";
 import { FiveCropSelector, FiveCropEvaluation, AVAILABLE_FIVE_CROPS } from "@/components/FiveCropSelector";
+import { AmbientBackground, MouseSpotlight, StepTransition, TiltCard } from "@/components/MotionPrimitives";
 
 type Dict = (typeof DICTS)[Lang];
 
@@ -478,7 +479,9 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen relative">
+      <AmbientBackground />
+      <MouseSpotlight />
       <Header
         onMethod={() => setMethodOpen(true)}
         onRestart={restart}
@@ -606,6 +609,9 @@ function Header({
   hardwareOverride: { active: boolean; temperature_c: number; soil_moisture_pct: number; humidity_pct: number } | null;
 }) {
   const { lang, toggle, t } = useLang();
+  const pillStyle =
+    "inline-flex items-center gap-1.5 rounded-full border border-[#D6D2C4] bg-white/80 px-4 py-1.5 text-xs font-medium text-[#143626] hover:bg-[#143626] hover:text-[#F7F5EE] transition cursor-pointer no-underline";
+
   return (
     <header className="site-header">
       <button className="brand button-reset" onClick={onRestart} aria-label={t.nav.home}>
@@ -614,14 +620,15 @@ function Header({
         </span>
         <span>Field Shift</span>
       </button>
-      <nav aria-label={t.nav.primary}>
-        <button onClick={onMethod}>{t.nav.method}</button>
-        <a href="#sources">{t.nav.sources}</a>
-        <Link
-          href="/hardware"
-          className="inline-flex items-center gap-2 rounded-full border border-[#D6D2C4] bg-white/80 px-4 py-1.5 text-xs font-medium text-[#143626] hover:bg-white transition"
-        >
-          <Cpu size={14} className="text-[#143626]" />
+      <nav aria-label={t.nav.primary} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <button onClick={onMethod} className={pillStyle}>
+          {t.nav.method}
+        </button>
+        <a href="#sources" className={pillStyle}>
+          {t.nav.sources}
+        </a>
+        <Link href="/hardware" className={pillStyle}>
+          <Cpu size={14} className="shrink-0" />
           <span>{lang === "ar" ? "وحدة الاستشعار (ESP32)" : "Hardware Node"}</span>
           {hardwareOverride?.active && (
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
@@ -629,8 +636,8 @@ function Header({
         </Link>
       </nav>
       <div className="header-actions">
-        <button className="lang-toggle" onClick={toggle} aria-label={t.toggle.aria}>
-          <Globe size={15} />
+        <button onClick={toggle} aria-label={t.toggle.aria} className={pillStyle}>
+          <Globe size={14} />
           <span>{t.toggle.label}</span>
         </button>
         <span className={`status-pill ${apiOnline ? "online" : "offline"}`}>
@@ -731,10 +738,12 @@ function Setup(p: SetupProps) {
               ))}
             </div>
           </div>
-          {p.step === 1 && <LocationStep {...p} />}
-          {p.step === 2 && <ConditionStep {...p} />}
-          {p.step === 3 && <FiveCropStep {...p} />}
-          {p.step === 4 && <ReviewStep {...p} />}
+          <StepTransition stepKey={p.step}>
+            {p.step === 1 && <LocationStep {...p} />}
+            {p.step === 2 && <ConditionStep {...p} />}
+            {p.step === 3 && <FiveCropStep {...p} />}
+            {p.step === 4 && <ReviewStep {...p} />}
+          </StepTransition>
           <div className="form-actions">
             {p.step > 1 && (
               <button className="secondary-action" onClick={() => p.setStep(p.step - 1)}>
@@ -1090,27 +1099,28 @@ function ConditionStep(p: SetupProps) {
             const isSelected = p.priority === key;
 
             return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => p.setPriority(key)}
-                className={`text-right rtl:text-right ltr:text-left p-4 rounded-2xl border transition cursor-pointer ${
-                  isSelected
-                    ? "bg-[#143626] text-[#F7F5EE] border-[#143626] shadow-sm"
-                    : "bg-white text-[#143626] border-[#E2DFD5] hover:border-[#143626]/40 shadow-xs"
-                }`}
-              >
-                <div className="font-bold text-sm">
-                  {lang === "ar" ? item.titleAr : item.titleEn}
-                </div>
-                <p
-                  className={`text-xs mt-1 leading-relaxed ${
-                    isSelected ? "text-[#F7F5EE]/85" : "text-[#5C665E]"
+              <TiltCard key={key} className="rounded-2xl" maxTilt={3}>
+                <button
+                  type="button"
+                  onClick={() => p.setPriority(key)}
+                  className={`w-full h-full text-right rtl:text-right ltr:text-left p-4 rounded-2xl border transition cursor-pointer ${
+                    isSelected
+                      ? "bg-[#143626] text-[#F7F5EE] border-[#143626] shadow-sm"
+                      : "bg-white text-[#143626] border-[#E2DFD5] hover:border-[#143626]/40 shadow-xs"
                   }`}
                 >
-                  {lang === "ar" ? item.descAr : item.descEn}
-                </p>
-              </button>
+                  <div className="font-bold text-sm">
+                    {lang === "ar" ? item.titleAr : item.titleEn}
+                  </div>
+                  <p
+                    className={`text-xs mt-1 leading-relaxed ${
+                      isSelected ? "text-[#F7F5EE]/85" : "text-[#5C665E]"
+                    }`}
+                  >
+                    {lang === "ar" ? item.descAr : item.descEn}
+                  </p>
+                </button>
+              </TiltCard>
             );
           })}
         </div>

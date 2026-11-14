@@ -16,6 +16,7 @@ import {
   Wind,
   Zap,
 } from "lucide-react";
+import { AmbientBackground, MouseSpotlight, TiltCard } from "@/components/MotionPrimitives";
 
 interface TelemetryData {
   active: boolean;
@@ -81,7 +82,7 @@ export default function HardwareStationPage() {
   }, []);
 
   // Quick scenario injection presets
-  const injectScenario = async (type: "drought" | "irrigated" | "heatwave") => {
+  const injectScenario = async (type: "balanced" | "drought" | "irrigated") => {
     setLoading(true);
     let override: Partial<TelemetryData> = {};
     if (type === "drought") {
@@ -93,17 +94,17 @@ export default function HardwareStationPage() {
       };
     } else if (type === "irrigated") {
       override = {
-        temperature_c: 26.5,
-        humidity_pct: 58.0,
+        temperature_c: 25.5,
+        humidity_pct: 62.0,
         soil_moisture_pct: 78.4,
         soil_raw_adc: 1540,
       };
-    } else if (type === "heatwave") {
+    } else if (type === "balanced") {
       override = {
-        temperature_c: 41.5,
-        humidity_pct: 19.0,
-        soil_moisture_pct: 21.0,
-        soil_raw_adc: 2880,
+        temperature_c: 27.0,
+        humidity_pct: 45.0,
+        soil_moisture_pct: 48.0,
+        soil_raw_adc: 2200,
       };
     }
 
@@ -160,8 +161,11 @@ export default function HardwareStationPage() {
   return (
     <div
       dir={isRtl ? "rtl" : "ltr"}
-      className="min-h-screen bg-[#F7F5EE] text-[#143626] py-8 px-4 sm:px-6 md:px-8 font-sans"
+      className="min-h-screen bg-[#F7F5EE] text-[#143626] py-8 px-4 sm:px-6 md:px-8 font-sans relative"
     >
+      <AmbientBackground />
+      <MouseSpotlight />
+
       {/* Top Header */}
       <div className="max-w-5xl mx-auto mb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -184,13 +188,13 @@ export default function HardwareStationPage() {
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setLang(lang === "ar" ? "en" : "ar")}
-              className="inline-flex items-center gap-2 rounded-full border border-[#D6D2C4] bg-white px-3.5 py-1.5 text-xs font-medium text-[#143626] hover:bg-[#F7F5EE] transition"
+              className="inline-flex items-center gap-2 rounded-full border border-[#D6D2C4] bg-white/80 px-4 py-1.5 text-xs font-medium text-[#143626] hover:bg-[#143626] hover:text-[#F7F5EE] transition cursor-pointer"
             >
               {lang === "ar" ? "English" : "العربية"}
             </button>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-[#D6D2C4] bg-[#143626] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#245c49] transition shadow-xs"
+              className="inline-flex items-center gap-2 rounded-full border border-[#D6D2C4] bg-[#143626] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#245c49] transition shadow-xs no-underline"
             >
               {isRtl ? <ArrowRight size={14} /> : <ArrowLeft size={14} />}
               {isRtl ? "العودة للوحة القيادة" : "Back to Planner"}
@@ -223,16 +227,16 @@ export default function HardwareStationPage() {
         </div>
       </div>
 
-      {/* Main Grid: Live Telemetry Gauges */}
+      {/* Main Grid: 4 Clean Telemetry Cards with 3D Tilt */}
       <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Soil Moisture */}
-        <div className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
+        <TiltCard className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
           <div className="flex justify-between items-center mb-3">
             <span className="text-xs font-medium text-stone-600 flex items-center gap-1.5">
               <Droplets size={16} className="text-sky-600" />
-              {isRtl ? "رطوبة التربة (ADC)" : "Soil Moisture (ADC)"}
+              {isRtl ? "رطوبة التربة" : "Soil Moisture"}
             </span>
-            <span className="text-[11px] font-mono text-stone-400">GPIO 34</span>
+            <span className="text-[11px] font-semibold text-emerald-700">ESP32</span>
           </div>
           <div className="text-3xl font-bold font-serif text-[#143626] mb-2">
             {telemetry.soil_moisture_pct.toFixed(1)}%
@@ -249,52 +253,58 @@ export default function HardwareStationPage() {
               style={{ width: `${Math.min(100, telemetry.soil_moisture_pct)}%` }}
             />
           </div>
-          <span className="text-[11px] text-stone-500">Raw ADC: {telemetry.soil_raw_adc} / 4095</span>
-        </div>
+          <span className="text-[11px] text-stone-500">
+            {telemetry.soil_moisture_pct > 50
+              ? isRtl ? "رطوبة كافية للإنبات" : "Adequate field capacity"
+              : isRtl ? "رطوبة منخفضة تتطلب رياً" : "Deficit moisture"}
+          </span>
+        </TiltCard>
 
         {/* Air Temperature */}
-        <div className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
+        <TiltCard className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
           <div className="flex justify-between items-center mb-3">
             <span className="text-xs font-medium text-stone-600 flex items-center gap-1.5">
               <Thermometer size={16} className="text-rose-600" />
-              {isRtl ? "حرارة الحقل (BME680)" : "Field Temperature"}
+              {isRtl ? "حرارة الحقل" : "Ambient Temp"}
             </span>
-            <span className="text-[11px] font-mono text-stone-400">I2C 0x76</span>
+            <span className="text-[11px] font-semibold text-stone-500">BME680</span>
           </div>
           <div className="text-3xl font-bold font-serif text-[#143626] mb-2">
             {telemetry.temperature_c.toFixed(1)} °C
           </div>
           <span className="text-[11px] text-stone-600">
-            {isRtl ? "تقييم الإجهاد الحراري:" : "Heat Stress:"}{" "}
+            {isRtl ? "الإجهاد الحراري:" : "Heat Stress:"}{" "}
             <strong className={telemetry.temperature_c > 35 ? "text-rose-600 font-semibold" : "text-emerald-700 font-semibold"}>
-              {telemetry.temperature_c > 35 ? (isRtl ? "إجهاد مرتفع" : "Critical") : (isRtl ? "طبيعي" : "Optimal")}
+              {telemetry.temperature_c > 35 ? (isRtl ? "إجهاد مرتفع" : "Critical") : (isRtl ? "طبيعي ومناسب" : "Optimal")}
             </strong>
           </span>
-        </div>
+        </TiltCard>
 
         {/* Relative Humidity */}
-        <div className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
+        <TiltCard className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
           <div className="flex justify-between items-center mb-3">
             <span className="text-xs font-medium text-stone-600 flex items-center gap-1.5">
               <Wind size={16} className="text-violet-600" />
               {isRtl ? "الرطوبة النسبية" : "Relative Humidity"}
             </span>
-            <span className="text-[11px] font-mono text-stone-400">BME680</span>
+            <span className="text-[11px] font-semibold text-stone-500">BME680</span>
           </div>
           <div className="text-3xl font-bold font-serif text-[#143626] mb-2">
             {telemetry.humidity_pct.toFixed(1)} %
           </div>
-          <span className="text-[11px] text-stone-500">Pressure: {telemetry.pressure_hpa.toFixed(1)} hPa</span>
-        </div>
+          <span className="text-[11px] text-stone-500">
+            {isRtl ? "الضغط الجوي:" : "Atmospheric Pressure:"} {telemetry.pressure_hpa.toFixed(1)} hPa
+          </span>
+        </TiltCard>
 
-        {/* Soil Gas Resistance */}
-        <div className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
+        {/* Soil Bio Activity */}
+        <TiltCard className="rounded-2xl bg-white border border-[#E2DFD5] p-5 shadow-xs transition hover:border-[#143626]/30">
           <div className="flex justify-between items-center mb-3">
             <span className="text-xs font-medium text-stone-600 flex items-center gap-1.5">
               <Gauge size={16} className="text-amber-600" />
-              {isRtl ? "نشاط التربة الحيوي (VOC)" : "Soil Gas Resistance"}
+              {isRtl ? "نشاط التربة الحيوي" : "Soil Bio Activity"}
             </span>
-            <span className="text-[11px] font-mono text-stone-400">MOX</span>
+            <span className="text-[11px] font-semibold text-amber-700">VOC</span>
           </div>
           <div className="text-3xl font-bold font-serif text-[#143626] mb-2">
             {telemetry.gas_resistance_kohm.toFixed(1)} kΩ
@@ -302,10 +312,10 @@ export default function HardwareStationPage() {
           <span className="text-[11px] text-stone-500">
             {isRtl ? "مؤشر التنفس الميكروبي" : "Microbial Respiration Index"}
           </span>
-        </div>
+        </TiltCard>
       </div>
 
-      {/* Satellite vs. ESP32 Ground-Truth Delta Table */}
+      {/* Satellite (NASA EO) vs. Field Sensor (ESP32) 3-Row Comparison Card */}
       <div className="max-w-5xl mx-auto bg-white border border-[#E2DFD5] rounded-2xl p-6 shadow-xs mb-8">
         <h3 className="text-base font-bold text-[#143626] mb-4 flex items-center gap-2">
           <Activity size={18} className="text-emerald-700" />
@@ -325,6 +335,7 @@ export default function HardwareStationPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2DFD5]/60">
+              {/* Row 1: Root Zone Moisture */}
               <tr>
                 <td className="py-3 px-3 font-semibold text-[#143626]">{isRtl ? "رطوبة التربة الجذرية" : "Root-Zone Moisture"}</td>
                 <td className="py-3 px-3 text-stone-600">{nasaEstimates.soil_moisture_pct}%</td>
@@ -348,6 +359,7 @@ export default function HardwareStationPage() {
                   </span>
                 </td>
               </tr>
+              {/* Row 2: Air Temperature */}
               <tr>
                 <td className="py-3 px-3 font-semibold text-[#143626]">{isRtl ? "درجة حرارة الهواء" : "Air Temperature"}</td>
                 <td className="py-3 px-3 text-stone-600">{nasaEstimates.temperature_c} °C</td>
@@ -367,12 +379,27 @@ export default function HardwareStationPage() {
                   </span>
                 </td>
               </tr>
+              {/* Row 3: Soil Texture Inference */}
+              <tr>
+                <td className="py-3 px-3 font-semibold text-[#143626]">{isRtl ? "قوام التربة المقدر" : "Soil Texture Response"}</td>
+                <td className="py-3 px-3 text-stone-600">{isRtl ? "طميية رملية (SoilGrids)" : "Sandy Loam (SoilGrids)"}</td>
+                <td className="py-3 px-3 font-bold text-emerald-800">
+                  {telemetry.soil_moisture_pct > 60
+                    ? isRtl ? "طينية مشبعة" : "Clay Loam (Saturated)"
+                    : telemetry.soil_moisture_pct > 30
+                    ? isRtl ? "طميية متوسطة" : "Loamy (Balanced)"
+                    : isRtl ? "رملية جافة" : "Sandy (Dry)"}
+                </td>
+                <td className="py-3 px-3 text-stone-500 text-xs">
+                  {isRtl ? "استجابة معايرة من سعة الرطوبة وسرعة التصريف" : "Inferred from moisture retention capacity"}
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Live Demo Scenario Injector & Apply Action */}
+      {/* 3 Scenario Preset Buttons & 1 Primary CTA Button */}
       <div className="max-w-5xl mx-auto bg-white border border-[#E2DFD5] rounded-2xl p-6 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h4 className="text-base font-bold text-[#143626] m-0 mb-1">
@@ -385,25 +412,25 @@ export default function HardwareStationPage() {
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
             <button
+              onClick={() => injectScenario("balanced")}
+              disabled={loading}
+              className="px-4 py-2 rounded-xl bg-[#E6ECE8] text-[#143626] border border-[#D6D2C4] text-xs font-semibold hover:bg-[#143626] hover:text-[#F7F5EE] transition cursor-pointer"
+            >
+              {isRtl ? "تربة متوازنة (48%)" : "Balanced Field (48%)"}
+            </button>
+            <button
               onClick={() => injectScenario("drought")}
               disabled={loading}
-              className="px-3.5 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold hover:bg-rose-100 transition"
+              className="px-4 py-2 rounded-xl bg-[#FEF3C7] text-[#B45309] border border-[#B45309]/30 text-xs font-semibold hover:bg-[#B45309] hover:text-white transition cursor-pointer"
             >
-              {isRtl ? "جفاف حاد (18% رطوبة)" : "Severe Drought (18%)"}
+              {isRtl ? "إجهاد جفاف (18%)" : "Drought Stress (18%)"}
             </button>
             <button
               onClick={() => injectScenario("irrigated")}
               disabled={loading}
-              className="px-3.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition"
+              className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold hover:bg-emerald-800 hover:text-white transition cursor-pointer"
             >
-              {isRtl ? "بعد الري (78% رطوبة)" : "Post-Irrigation (78%)"}
-            </button>
-            <button
-              onClick={() => injectScenario("heatwave")}
-              disabled={loading}
-              className="px-3.5 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition"
-            >
-              {isRtl ? "موجة حرارة (41.5°C)" : "Heatwave (41.5°C)"}
+              {isRtl ? "بعد الري (78%)" : "Post-Irrigation (78%)"}
             </button>
           </div>
         </div>
@@ -411,7 +438,7 @@ export default function HardwareStationPage() {
         <div>
           <button
             onClick={applyToPlanner}
-            className={`px-6 py-3 rounded-xl text-white font-semibold text-sm inline-flex items-center gap-2 shadow-xs transition ${
+            className={`px-6 py-3 rounded-xl text-white font-semibold text-sm inline-flex items-center gap-2 shadow-xs transition cursor-pointer ${
               applied ? "bg-emerald-700" : "bg-[#143626] hover:bg-[#245c49]"
             }`}
           >
