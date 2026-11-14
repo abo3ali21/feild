@@ -38,6 +38,7 @@
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 Adafruit_BME680 bme;
 
+bool bmeOnline = false;
 bool haveReading = false;
 bool lastUploadValid = false;
 unsigned long lastMeasureMs = 0;
@@ -83,7 +84,7 @@ bool deviceTimestamp(String &iso) {
 }
 
 void measureSensors() {
-  if (bme.performReading()) {
+  if (bmeOnline && bme.performReading()) {
     latest.temperatureValid = !isnan(bme.temperature);
     latest.humidityValid = !isnan(bme.humidity);
     latest.pressureValid = !isnan(bme.pressure);
@@ -92,10 +93,15 @@ void measureSensors() {
     latest.humidity = bme.humidity;
     latest.pressureHpa = bme.pressure / 100.0;
     latest.gasOhms = bme.gas_resistance;
-    haveReading = true;
+  } else {
+    latest.temperatureValid = false;
+    latest.humidityValid = false;
+    latest.pressureValid = false;
+    latest.gasValid = false;
   }
   latest.soilRaw = analogRead(SOIL_MOISTURE_PIN);
   latest.soilValid = latest.soilRaw >= 0 && latest.soilRaw <= 4095;
+  haveReading = latest.soilValid || latest.temperatureValid;
 }
 
 String buildJson() {
@@ -123,7 +129,11 @@ bool uploadReading() {
   WiFiClientSecure secure;
   bool began;
   if (url.startsWith("https://")) {
-    secure.setInsecure();  // MVP without a CA bundle; use setCACert() in production
+#ifdef ROOT_CA_CERTIFICATE
+    secure.setCACert(ROOT_CA_CERTIFICATE);
+#else
+    secure.setInsecure();  // Development fallback; define ROOT_CA_CERTIFICATE in Secrets.h for production
+#endif
     began = http.begin(secure, url);
   } else {
     began = http.begin(url);  // plain HTTP only for a local development backend
@@ -164,19 +174,23 @@ void setup() {
   u8g2.begin();
 
   if (!bme.begin(0x77)) {
+    Serial.println("Warning: BME680 sensor not detected at 0x77. Continuing with soil moisture only.");
+    bmeOnline = false;
     u8g2.firstPage();
     do {
       u8g2.setFont(u8g2_font_6x10_tr);
-      u8g2.drawStr(10, 30, "BME680 Error!");
+      u8g2.drawStr(5, 25, "Field Shift ESP32");
+      u8g2.drawStr(5, 45, "BME680 N/A (Soil Only)");
     } while (u8g2.nextPage());
-    while (1);
+    delay(1500);
+  } else {
+    bmeOnline = true;
+    bme.setTemperatureOversampling(BME680_OS_8X);
+    bme.setHumidityOversampling(BME680_OS_2X);
+    bme.setPressureOversampling(BME680_OS_4X);
+    bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
+    bme.setGasHeater(320, 150);
   }
-
-  bme.setTemperatureOversampling(BME680_OS_8X);
-  bme.setHumidityOversampling(BME680_OS_2X);
-  bme.setPressureOversampling(BME680_OS_4X);
-  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
-  bme.setGasHeater(320, 150);
 
   pinMode(SOIL_MOISTURE_PIN, INPUT);
   connectWifi();
@@ -185,14 +199,13 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  // Measurement + OLED at the original ~2 s cadence; never gated by the network.
+  // Measurement + OLED at ~2 s cadence; never gated by the network.
   if (now - lastMeasureMs >= MEASUREMENT_INTERVAL_MS) {
     lastMeasureMs = now;
     measureSensors();
   }
 
-  // Upload scheduling with exponential backoff; a slow or absent network
-  // cannot stall the measurement loop beyond the single 8 s request timeout.
+  // Upload scheduling with exponential backoff
   unsigned long uploadDue = lastUploadValid ? UPLOAD_INTERVAL_MS : retryDelayMs;
   if (haveReading && now - lastUploadAttemptMs >= uploadDue) {
     lastUploadAttemptMs = now;
@@ -208,18 +221,34 @@ void loop() {
   do {
     u8g2.setFont(u8g2_font_6x10_tr);
     u8g2.setCursor(0, 10);
-    u8g2.print("T: "); u8g2.print(latest.temperatureC, 1); u8g2.print("C");
+    if (latest.temperatureValid) {
+      u8g2.print("T: "); u8g2.print(latest.temperatureC, 1); u8g2.print("C");
+    } else {
+      u8g2.print("T: N/A");
+    }
     u8g2.setCursor(64, 10);
-    u8g2.print("HumAir: "); u8g2.print(latest.humidity, 0); u8g2.print("%");
+    if (latest.humidityValid) {
+      u8g2.print("Hum: "); u8g2.print(latest.humidity, 0); u8g2.print("%");
+    } else {
+      u8g2.print("Hum: N/A");
+    }
     u8g2.setCursor(0, 22);
-    u8g2.print("P: "); u8g2.print(latest.pressureHpa, 0); u8g2.print("hPa");
+    if (latest.pressureValid) {
+      u8g2.print("P: "); u8g2.print(latest.pressureHpa, 0); u8g2.print("hPa");
+    } else {
+      u8g2.print("P: N/A");
+    }
     u8g2.setCursor(64, 22);
     u8g2.print("Alt: "); u8g2.print(altitude, 0); u8g2.print("m");
     u8g2.setCursor(0, 34);
-    u8g2.print("G: "); u8g2.print(latest.gasOhms / 1000.0, 1); u8g2.print(" kOhm");
+    if (latest.gasValid) {
+      u8g2.print("G: "); u8g2.print(latest.gasOhms / 1000.0, 1); u8g2.print(" kOhm");
+    } else {
+      u8g2.print("G: N/A");
+    }
     u8g2.drawHLine(0, 40, 128);
     u8g2.setCursor(0, 52);
-    u8g2.print("Hum Mud: "); u8g2.print(latest.soilRaw);
+    u8g2.print("Soil ADC: "); u8g2.print(latest.soilRaw);
     u8g2.setCursor(0, 64);
     u8g2.print("Status:  "); u8g2.print(soilStatus);
   } while (u8g2.nextPage());
