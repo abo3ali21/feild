@@ -90,11 +90,11 @@ def get_shared_client() -> RetryingClient:
 
 
 def demo_profiles() -> list[dict]:
-    return json.loads((DATA_DIR / "demo_profiles.json").read_text())
+    return json.loads((DATA_DIR / "demo_profiles.json").read_text(encoding="utf-8"))
 
 
 def _load_all_crops() -> list[Crop]:
-    return [Crop.model_validate(item) for item in json.loads((DATA_DIR / "crops.json").read_text())]
+    return [Crop.model_validate(item) for item in json.loads((DATA_DIR / "crops.json").read_text(encoding="utf-8"))]
 
 
 class NasaPowerAdapter:

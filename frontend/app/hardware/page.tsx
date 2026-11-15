@@ -75,7 +75,7 @@ export default function HardwareStationPage() {
     }
 
     fetchLatest();
-    const interval = setInterval(fetchLatest, 2000);
+    const interval = setInterval(fetchLatest, 3000);
     return () => {
       mounted = false;
       clearInterval(interval);

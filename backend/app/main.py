@@ -84,6 +84,7 @@ async def ingest_sensor_reading(
     x_device_id: str | None = Header(default=None),
     x_device_key: str | None = Header(default=None),
 ):
+    global LATEST_HARDWARE_TELEMETRY
     if not x_device_id or not x_device_key:
         raise HTTPException(status_code=401, detail="X-Device-Id and X-Device-Key headers are required")
     if reading.device_id != x_device_id:
@@ -105,6 +106,27 @@ async def ingest_sensor_reading(
         raise HTTPException(status_code=422, detail="device_timestamp is older than the accepted backfill window")
     outcome = sensor_store.insert_reading(device, reading.model_dump(exclude={"device_id", "device_timestamp"}), reading.device_timestamp.isoformat())
     logger.info("sensor_ingest device=%s farm=%s outcome=%s", device["device_id"], device["farm_id"], outcome)
+    live = {
+        **LATEST_HARDWARE_TELEMETRY,
+        "active": True,
+        "is_synthetic": False,
+        "device_id": device["device_id"],
+        "timestamp": time.time(),
+    }
+    if reading.temperature_c is not None:
+        live["temperature_c"] = reading.temperature_c
+    if reading.humidity_percent is not None:
+        live["humidity_pct"] = reading.humidity_percent
+    if reading.pressure_hpa is not None:
+        live["pressure_hpa"] = reading.pressure_hpa
+    if reading.gas_resistance_ohms is not None:
+        live["gas_resistance_kohm"] = reading.gas_resistance_ohms / 1000.0
+    if reading.soil_moisture_raw is not None:
+        live["soil_raw_adc"] = reading.soil_moisture_raw
+        moisture = sensor_store.moisture_percent(reading.soil_moisture_raw, device["soil_wet_adc"], device["soil_dry_adc"])
+        if moisture is not None:
+            live["soil_moisture_pct"] = moisture
+    LATEST_HARDWARE_TELEMETRY = live
     return {"status": outcome, "farm_id": device["farm_id"], "duplicate": outcome == "duplicate"}
 
 

@@ -119,7 +119,7 @@ def sync_setup(connection: sqlite3.Connection) -> None:
     config = setup_config_path()
     if not config.exists():
         return
-    document = json.loads(config.read_text())
+    document = json.loads(config.read_text(encoding="utf-8"))
     farms = document.get("farms", [])
     coordinate_keys = [coord_key(farm["latitude"], farm["longitude"]) for farm in farms]
     if len(coordinate_keys) != len(set(coordinate_keys)):

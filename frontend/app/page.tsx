@@ -242,7 +242,7 @@ export default function Home() {
           ? "تعذر اتصال GPS — تم تعيين إحداثيات مصر الزراعية (الأقصر) تلقائياً"
           : "GPS timed out — Applied Egypt Nile Valley coordinates",
       );
-    }, 4000);
+    }, 12000);
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -264,7 +264,7 @@ export default function Home() {
             : "Fallback applied: Egypt Nile Valley coordinates",
         );
       },
-      { timeout: 4000, enableHighAccuracy: true },
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
     );
   }
 

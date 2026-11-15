@@ -35,12 +35,12 @@ WEIGHT_PRESETS = {
 
 @lru_cache
 def load_crops() -> tuple[Crop, ...]:
-    return tuple(Crop.model_validate(item) for item in json.loads((DATA_DIR / "crops.json").read_text()))
+    return tuple(Crop.model_validate(item) for item in json.loads((DATA_DIR / "crops.json").read_text(encoding="utf-8")))
 
 
 @lru_cache
 def load_families() -> dict:
-    return json.loads((DATA_DIR / "families.json").read_text())
+    return json.loads((DATA_DIR / "families.json").read_text(encoding="utf-8"))
 
 
 def suitability(crop: Crop, context: EnvironmentalContext, irrigated: bool, irrigation_supply_mm: float | None = None) -> list[Decision]:
