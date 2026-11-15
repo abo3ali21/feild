@@ -7,6 +7,7 @@ import time
 from collections import OrderedDict, deque
 from copy import deepcopy
 from datetime import timedelta
+from typing import Any
 from uuid import uuid4
 
 from fastapi import Body, FastAPI, Header, HTTPException, Query
@@ -27,22 +28,33 @@ app = FastAPI(
     version="0.1.0",
     description="Transparent, deterministic climate-resilient crop rotation decision support.",
 )
-origins = [item.strip() for item in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if item.strip()]
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False, allow_methods=["GET", "POST"], allow_headers=["*"])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 EVALUATIONS: dict[str, tuple[FarmRequest, EvaluationResponse]] = {}
 
 
+@app.get("/")
+@app.get("/health")
+@app.get("/api/health")
 @app.get("/api/v1/health")
 def health():
     return {"status": "ok", "service": "agri-rotation-api", "engine": "deterministic"}
 
 
+@app.get("/api/crops")
 @app.get("/api/v1/crops")
 def crops():
     return {"crops": [crop.model_dump() for crop in load_crops()]}
 
 
+@app.get("/api/demo-profiles")
 @app.get("/api/v1/demo-profiles")
 def profiles():
     return {"profiles": [{key: value for key, value in profile.items() if key != "context"} for profile in demo_profiles()]}
@@ -191,11 +203,13 @@ async def evaluate_request(request: FarmRequest, evaluation_id: str | None = Non
     return response
 
 
+@app.post("/api/farms/evaluate", response_model=EvaluationResponse)
 @app.post("/api/v1/farms/evaluate", response_model=EvaluationResponse)
 async def evaluate(request: FarmRequest):
     return await evaluate_request(request)
 
 
+@app.post("/api/farms/simulate", response_model=EvaluationResponse)
 @app.post("/api/v1/farms/simulate", response_model=EvaluationResponse)
 async def simulate(request: SimulationRequest):
     stored = EVALUATIONS.get(request.evaluation_id)
@@ -243,7 +257,6 @@ async def simulate(request: SimulationRequest):
         evaluation_id=simulated_id, environmental_context=context, data_provenance=original.data_provenance,
         recommended_rotations=rotations, rejected_examples=rejected,
     )
-    # Store (farm_request, original) under simulated_id so subsequent re-simulations preserve the baseline!
     EVALUATIONS[simulated_id] = (farm_request, original)
     try:
         sensor_store.save_evaluation(simulated_id, farm_request.model_dump(), original.model_dump())
@@ -326,4 +339,3 @@ def evaluate_five_crops_endpoint(payload: dict[str, Any] = Body(...)):
         "soil_texture_info": soil_texture_info,
         **result,
     }
-

@@ -62,7 +62,11 @@ CREATE INDEX IF NOT EXISTS idx_evaluations_created_at ON evaluations(created_at)
 
 
 def db_path() -> Path:
-    return Path(os.getenv("SENSOR_DB_PATH", str(Path.cwd() / "sensor_readings.db")))
+    if os.getenv("SENSOR_DB_PATH"):
+        return Path(os.getenv("SENSOR_DB_PATH"))
+    if os.getenv("VERCEL") or os.getenv("VERCEL_ENV") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+        return Path("/tmp/sensor_readings.db")
+    return Path.cwd() / "sensor_readings.db"
 
 
 def setup_config_path() -> Path:
@@ -340,4 +344,3 @@ def load_evaluation(evaluation_id: str) -> tuple[dict, dict] | None:
         return json.loads(row["farm_request_json"]), json.loads(row["response_json"])
     finally:
         connection.close()
-
